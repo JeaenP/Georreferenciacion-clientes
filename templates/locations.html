@@ -1,0 +1,487 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div onload="initMap()">
+
+    <div class="row">
+        <div class="col-6">
+            <h2 class="mt-3" style="font-weight: 400">Mapa de Clientes</h2>
+        </div>
+        <div class="col-6">
+            <h2 class="mt-3" style="font-weight: 400">Clusterización</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="row">
+            <div class="col-3 my-1 ">
+                <div class="input-group">
+                    <input type="text" id="search-client" class="form-control " placeholder="Buscar cliente" style="border-color: #75BC20; font-size: 14px">
+                    <button class="btn" type="button" onclick="searchClient()">
+                        <img src="{% static 'img/buscar.png' %}" alt="Driving Icon" class="icon" id="driving-icon">
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-2 my-1">
+                    <select id="producto-select" class="form-select select-custom" onchange="filterByProducto(this)" style="border-color: #75BC20; font-size: 14px" >
+                        <option value="">Todos</option>
+                        {% for producto in productos %}
+                            <option value="{{ producto }}">{{ producto }}</option>
+                        {% endfor %}
+                    </select>
+            </div>
+            <div class="col-1 my-1">
+                
+        </div>
+            <div class="col-6 ">
+                <button id="btn-cluster" class="btn btn-custom btn-rounded my-1" onclick="filterMarkers('cluster', this)">Cluster</button>
+                <button id="btn-centroid" class="btn btn-custom btn-rounded my-1"  onclick="filterMarkers('centroid', this)">Centroides</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-4">
+                <div id="suggestions" style="display: none; font-size: 10px;"></div>
+            </div>
+        </div>
+        <div class="row">
+    
+            <div class="col-3">
+                <div class="my-2 d-flex justify-content-between"  >
+                    <button id="btn-todos" class="btn btn-custom btn-rounded px-3" onclick="filterMarkers('todos', this)">Todos</button>
+                    <button id="btn-domicilio" class="btn btn-custom btn-rounded px-3" onclick="filterMarkers('domicilio', this)">Domicilio</button>
+                    <button id="btn-trabajo" class="btn btn-custom btn-rounded px-3" onclick="filterMarkers('trabajo', this)">Trabajo</button>
+                    
+                    
+                </div>
+                
+            </div>
+          
+           
+            
+            
+            
+        </div>
+    </div>
+    
+    
+    
+    <div class="row m-2">
+        <div class="card p-3">
+            <div id="map" style="height: 500px; width: 100%;"></div>
+        </div>
+    </div>
+    
+    
+
+</div>
+
+
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDlVCgySWEMmwnXN7tJLSLqUBCy-UZlwio&libraries=marker" defer></script>
+
+
+<script>
+    let map;
+    let markers = [];
+    let clientes = JSON.parse('{{ clientes_json|escapejs }}');
+    let clusters = JSON.parse('{{ clusters_json|escapejs }}');
+    let centroids = JSON.parse('{{ centroids_json|escapejs }}');
+    let currentFilter = 'todos';
+    let currentProducto = '';
+    let selectedClient = null;
+    const clusterColors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#808000", "#008000", "#800080", "#008080", "#000080", "#FF6347", "#4682B4", "#9ACD32", "#ADFF2F", "#32CD32", "#40E0D0", "#EE82EE", "#FF1493"];
+    const customIcon = "{% static 'img/client_marker.png' %}";
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 14,
+            center: {lat: -3.99512, lng: -79.20136} // Coordenadas de inicio
+        });
+
+        addMarkers(currentFilter, currentProducto);
+        document.getElementById('btn-todos').classList.add('btn-custom-selected');
+
+
+        const searchQuery = '{{ search_query }}';
+        if (searchQuery && searchQuery !== 'None') {
+            document.getElementById('search-client').value = searchQuery;
+            searchClient();
+        }
+
+        
+    }
+
+    function addMarkers(filter, producto = '') {
+        clearMarkers();
+
+        if (filter === 'centroid') {
+            centroids.forEach(function(centroid) {
+                var lat = parseFloat(centroid['avg_latitud']);
+                var lng = parseFloat(centroid['avg_longitud']);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `Cluster: ${centroid.cluster_direccion}`,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: centroid.count_clients/4 + 10,
+                            fillColor: clusterColors[centroid.cluster_direccion % clusterColors.length],
+                            fillOpacity: 1,
+                            strokeWeight: 1,
+                            strokeColor: '#000000'
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+            
+                                <div class="titulo">Cluster ${centroid.cluster_direccion}</div><br>
+                                <div class="etiqueta">Número de clientes: </div>${centroid.count_clients}<br>
+                            
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                }
+            });
+        } else if (filter === 'cluster') {
+            clusters.forEach(function(cluster) {
+                var lat = parseFloat(cluster['cliente__latitud_domicilio']);
+                var lng = parseFloat(cluster['cliente__longitud_domicilio']);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${cluster.cliente__nombre_cliente} (Cluster: ${cluster.cluster_direccion})`,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 5,
+                            fillColor: clusterColors[cluster.cluster_direccion % clusterColors.length],
+                            fillOpacity: 1,
+                            strokeWeight: 0.1,
+                            strokeColor: '#000000'
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <strong>${cluster.cliente__nombre_cliente}</strong><br>
+                                Cluster - ${cluster.cluster_direccion}
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                }
+            });
+        } else if (filter === 'single' && selectedClient) {
+
+            if (selectedClient.tipo_direccion_cliente === 'DOMICILIO') {
+                var lat= parseFloat(selectedClient.latitud_domicilio);
+                var lng= parseFloat(selectedClient.longitud_domicilio);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${selectedClient.nombre_cliente} - ${selectedClient.producto_principal}`,
+                        icon: {
+                            url: customIcon,
+                            scaledSize: new google.maps.Size(32, 46),
+                          }
+                    });
+
+                    
+                    
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <div class="titulo">${selectedClient.nombre_cliente}</div><br>
+                                <div class="etiqueta">Dirección: </div>${selectedClient.tipo_direccion_cliente}<br>
+                                <div class="etiqueta">Vivienda: </div>${selectedClient.tipo_vivienda_cliente}<br>
+                                <div class="etiqueta">Producto: </div>${selectedClient.producto_principal}<br>
+                                <div class="etiqueta">Profesión: </div>${selectedClient.profesion_cliente}<br>
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                    map.setCenter({lat: lat, lng: lng});
+                    map.setZoom(16);
+                }
+            } else if(selectedClient.tipo_direccion_cliente === 'TRABAJO'){
+                var lat= parseFloat(selectedClient.latitud_trabajo);
+                var lng= parseFloat(selectedClient.longitud_trabajo);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${selectedClient.nombre_cliente} - ${selectedClient.producto_principal}`,
+                        icon: {
+                            url: "{% static 'img/client_marker.png' %}",
+                            scaledSize: new google.maps.Size(32, 46),
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <div class="titulo">${selectedClient.nombre_cliente}</div><br>
+                                <div class="etiqueta">Dirección: </div>${selectedClient.tipo_direccion_cliente}<br>
+                                <div class="etiqueta">Vivienda: </div>${selectedClient.tipo_vivienda_cliente}<br>
+                                <div class="etiqueta">Producto: </div>${selectedClient.producto_principal}<br>
+                                <div class="etiqueta">Profesión: </div>${selectedClient.profesion_cliente}<br>
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                    map.setCenter({lat: lat, lng: lng});
+                    map.setZoom(16);
+                } 
+            }
+        } else {
+            clientes.forEach(function(cliente) {
+                if (producto && cliente.producto_principal !== producto) {
+                    return;
+                }
+
+                if (filter === 'todos' || filter === 'domicilio') {
+                    var latDomicilio = parseFloat(cliente['latitud_domicilio']);
+                    var lngDomicilio = parseFloat(cliente['longitud_domicilio']);
+                    if (!isNaN(latDomicilio) && !isNaN(lngDomicilio)) {
+                        var markerDomicilio = new google.maps.Marker({
+                            position: {lat: latDomicilio, lng: lngDomicilio},
+                            map: map,
+                            title: `${cliente.nombre_cliente} (Domicilio) - ${cliente.producto_principal}`,
+                            icon: {
+                                url: customIcon,
+                                scaledSize: new google.maps.Size(32, 46),
+                              }
+                        });
+
+                        
+
+                        var infoWindowDomicilio = new google.maps.InfoWindow({
+                            content: `
+                                <div class="custom-infowindow">
+                                    <div class="titulo">${cliente.nombre_cliente}</div><br>
+                                    <div class="etiqueta">Dirección: </div>Domicilio<br>
+                                    <div class="etiqueta">Vivienda: </div>${cliente.tipo_vivienda_cliente}<br>
+                                    <div class="etiqueta">Producto: </div>${cliente.producto_principal}<br>
+                                    <div class="etiqueta">Profesión: </div>${cliente.profesion_cliente}<br>
+                                </div>`
+                        });
+
+                        markerDomicilio.addListener('mouseover', function() {
+                            infoWindowDomicilio.open(map, markerDomicilio);
+                        });
+
+                        markerDomicilio.addListener('mouseout', function() {
+                            infoWindowDomicilio.close();
+                        });
+
+                        markers.push(markerDomicilio);
+                    }
+                }
+
+                if (filter === 'todos' || filter === 'trabajo') {
+                    var latTrabajo = parseFloat(cliente['latitud_trabajo']);
+                    var lngTrabajo = parseFloat(cliente['longitud_trabajo']);
+                    if (!isNaN(latTrabajo) && !isNaN(lngTrabajo)) {
+                        var markerTrabajo = new google.maps.Marker({
+                            position: {lat: latTrabajo, lng: lngTrabajo},
+                            map: map,
+                            title: `${cliente.nombre_cliente} (Trabajo) - ${cliente.producto_principal}`,
+                            icon: {
+                                url: customIcon,
+                                scaledSize: new google.maps.Size(32, 46),
+                              }
+                        });
+
+                        var infoWindowTrabajo = new google.maps.InfoWindow({
+                            content: `
+                                <div class="custom-infowindow">
+                                    <div class="titulo">${cliente.nombre_cliente}</div><br>
+                                    <div class="etiqueta">Dirección: </div>Trabajo<br>
+                                    <div class="etiqueta">Vivienda: </div>${cliente.tipo_vivienda_cliente}<br>
+                                    <div class="etiqueta">Producto: </div>${cliente.producto_principal}<br>
+                                    <div class="etiqueta">Profesión: </div>${cliente.profesion_cliente}<br>
+                                </div>`
+                        });
+
+                        markerTrabajo.addListener('mouseover', function() {
+                            infoWindowTrabajo.open(map, markerTrabajo);
+                        });
+
+                        markerTrabajo.addListener('mouseout', function() {
+                            infoWindowTrabajo.close();
+                        });
+
+                        markers.push(markerTrabajo);
+                    }
+                }
+            });
+        }
+    }
+
+
+    function clearMarkers() {
+        markers.forEach(function(marker) {
+            marker.setMap(null);
+        });
+        markers = [];
+    }
+
+    function filterMarkers(filter, button) {
+        currentFilter = filter;
+        addMarkers(currentFilter, currentProducto);
+        document.querySelectorAll('.btn-custom-selected').forEach(function(btn) {
+            btn.classList.remove('btn-custom-selected');
+            btn.classList.add('btn-custom');
+        });
+        button.classList.remove('btn-custom');
+        button.classList.add('btn-custom-selected');
+    }
+
+    function filterByProducto(select) {
+        currentProducto = select.value;
+        addMarkers(currentFilter, currentProducto);
+    }
+
+    function searchClient() {
+        let input = document.getElementById('search-client');
+        let query = input.value.toLowerCase();
+        let matchedClient = clientes.find(cliente => cliente.nombre_cliente.toLowerCase().includes(query));
+
+        if (matchedClient) {
+            selectedClient = matchedClient;
+            filterMarkers('single');
+        }
+    }
+
+    document.getElementById('search-client').addEventListener('input', function() {
+        let input = this.value.toLowerCase();
+        let suggestions = clientes.filter(cliente => cliente.nombre_cliente.toLowerCase().includes(input));
+
+        let suggestionsList = document.getElementById('suggestions');
+        suggestionsList.innerHTML = '';
+
+        if (suggestions.length === 0 || input === '') {
+            suggestionsList.style.display = 'none';
+        } else {
+            suggestionsList.style.display = 'block';
+            suggestions.forEach(function(cliente) {
+                let suggestionItem = document.createElement('a');
+                suggestionItem.href = '#';
+                suggestionItem.classList.add('list-group-item', 'list-group-item-action');
+                suggestionItem.textContent = cliente.nombre_cliente;
+                suggestionItem.onclick = function() {
+                    document.getElementById('search-client').value = cliente.nombre_cliente;
+                    suggestionsList.innerHTML = '';
+                    suggestionsList.style.display = 'none';
+                };
+                suggestionsList.appendChild(suggestionItem);
+            });
+        }
+    });
+
+    window.onload = initMap;
+</script>
+<style>
+    .custom-infowindow .etiqueta{
+        font-size: 14px;
+        font-weight: 500;
+        display: inline;
+    }
+    .custom-infowindow .titulo{
+        font-size: 14px;
+        color: #75BC20;
+        font-weight: 600;
+    }
+    .btn-custom {
+        background-color: white;
+        border: 1px solid #75BC20;
+    }
+    .btn-custom-selected {
+        background-color: #75BC20;
+        color: white;
+        border: 1px solid #75BC20;
+    }
+    .btn-rounded {
+        border-radius: 20px;
+    }
+    .btn-custom:hover {
+        background-color: white;
+        color: #75BC20;
+        border: 1px solid #75BC20;
+    }
+    .btn-custom-selected:hover {
+        background-color: #75BC20;
+        color: white;
+        border: 1px solid #75BC20;
+    }
+    #suggestions {
+        position: absolute;
+        z-index: 1000;
+        background-color: white;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        width: 15%;
+    }
+    #suggestions .list-group-item {
+        border: none;
+        padding: 3px;
+        cursor: pointer;
+    }
+    #suggestions .list-group-item:hover {
+        background-color: #f1f1f1;
+    }
+    .icon {
+        width: 20px;
+        height: 20px;
+    }
+
+</style>
+
+
+{% endblock content %}

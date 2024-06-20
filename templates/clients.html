@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<h2 class="my-3" style="font-weight: 400">Clientes</h2>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" class="form-control" id="search-input" placeholder="Buscar" style="border-color: #75BC20; font-size: 14px">
+    </div>
+    <div class="col-md-2">
+        <select class="form-select select-custom" id="profesion-select" style="border-color: #75BC20; font-size: 14px">
+            <option value="">Todas las Profesiones</option>
+            {% for profesion in profesiones %}
+                <option value="{{ profesion }}">{{ profesion }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select select-custom" id="tipo-direccion-select" style="border-color: #75BC20; font-size: 14px">
+            <option value="">Tipo de Dirección</option>
+            {% for tipo in tipos_direccion %}   
+                <option value="{{ tipo }}">{{ tipo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select select-custom" id="producto-principal-select" style="border-color: #75BC20; font-size: 14px">
+            <option value="">Todos los Productos</option>
+            {% for producto in productos_principales %}
+                <option value="{{ producto }}">{{ producto }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select select-custom" id="tipo-parroquia-select" style="border-color: #75BC20; font-size: 14px">
+            <option value="">Tipo de Parroquia</option>
+            {% for tipo in tipos_parroquia %}
+                <option value="{{ tipo }}">{{ tipo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="app-table mb-5">
+    <div class="app-table-container">
+        <table class="table table-striped table-hover">
+            <thead class="table-header">
+                <tr>
+                    <th>#</th>
+                    <th>Ubicación</th>
+                    <th>Visitas</th>
+                    <th>Codigo</th>
+                    <th>Tipo Documento</th>
+                    <th>Nombre</th>
+                    <th>Genero</th>
+                    <th>Tipo Cliente</th>
+                    <th>Profesion Cliente</th>
+                    <th>Estado Civil Cliente</th>
+                    <th>Nacionalidad Cliente</th>
+                    <th>Tipo Dirección Cliente</th>
+                    <th>Tipo Vivienda Cliente</th>
+                    <th>Tipo Parroquia</th>
+                    <th>País Residencia</th>
+                    <th>Provincia Residencia</th>
+                    <th>Cantón Residencia</th>
+                    <th>Parroquia Residencia</th>
+                    <th>Barrio Residencia</th>
+                    <th>Calle Principal Residencia</th>
+                    <th>Calle Secundaria Residencia</th>
+                    <th>Referencia Residencia</th>
+                    <th>Nivel Educación Cliente</th>
+                    <th>Producto Principal</th>
+                    <th>Latitud Domicilio</th>
+                    <th>Longitud Domicilio</th>
+                    <th>Latitud Trabajo</th>
+                    <th>Longitud Trabajo</th>
+                    
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <td class="sticky-column">{{ forloop.counter }}</td>
+                    <td>
+                        <a href="{% url 'locations' %}?search={{ cliente.nombre_cliente }}" class="btn btn-custom btn-rounded px-2">
+                            <img src="{% static 'img/google_maps.webp' %}" alt="Walking Icon" class="icon" id="walking-icon" >
+                        </a>
+                    </td> 
+                    <td>
+                        <a href="{% url 'visits' %}?cliente_id={{ cliente.id }}" class="btn btn-custom btn-rounded px-2">
+                            <img src="{% static 'img/visit.png' %}" alt="Visits Icon" id="visits-icon" style="width: 30px; height:30px;">
+                        </a>
+                    </td>
+                    <td>{{ cliente.codigo_cliente }}</td>
+                    <td>{{ cliente.tipo_documento }}</td>
+                    <td>{{ cliente.nombre_cliente }}</td>
+                    <td>{{ cliente.genero_cliente }}</td>   
+                    <td>{{ cliente.tipo_cliente }}</td>
+                    <td>{{ cliente.profesion_cliente }}</td>
+                    <td>{{ cliente.estado_civil_cliente }}</td>
+                    <td>{{ cliente.nacionalidad_cliente }}</td>
+                    <td>{{ cliente.tipo_direccion_cliente }}</td>
+                    <td>{{ cliente.tipo_vivienda_cliente }}</td>
+                    <td>{{ cliente.tipo_parroquia_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.pais_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.provincia_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.canton_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.parroquia_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.barrio_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.calle_principal_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.calle_secundaria_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.referencia_residencia_trabajo_cliente }}</td>
+                    <td>{{ cliente.nivel_educacion_cliente }}</td>
+                    <td>{{ cliente.producto_principal }}</td>
+                    <td>{{ cliente.latitud_domicilio }}</td>
+                    <td>{{ cliente.longitud_domicilio }}</td>
+                    <td>{{ cliente.latitud_trabajo }}</td>
+                    <td>{{ cliente.longitud_trabajo }}</td>
+                    
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .app-table-container {
+        position: relative;
+        width: 100%;
+        height: 500px;
+        overflow: auto;
+    }
+
+    .table-header {
+        position: sticky;
+        top: 0;
+        background-color: white;
+        z-index: 1;
+    }
+
+    .sticky-column {
+        position: sticky;
+        left: 0;
+        background-color: white;
+    }
+
+    .app-table-scroll th,
+    .app-table-scroll td {
+        font-size: medium;
+        min-width: 190px;
+    }
+    .icon {
+        width: 40%;
+
+    }
+</style>
+<script src="{% static 'js/clients_script.js' %}">  </script>
+
+{% endblock content %}

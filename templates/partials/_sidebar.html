@@ -1,0 +1,61 @@
+{% load static %}
+
+<div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 " >
+    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mb-1 text-body-secondary text-uppercase">
+      <a class="nav-link link-secondary" href="#"aria-label="Add a new report">
+        <svg class="bi"><use xlink:href="#plus-circle"/></svg>
+      </a>
+    </h6>
+    <ul class="nav flex-column mb-auto">
+      <li class="nav-item mx-3">
+        <a class="nav-link d-flex align-items-center gap-2 fs-6" href="{% url 'clients' %}">
+          <img src="..\static\img\cliente.png" alt="Logo" style="width: 40px; height: 40px;">
+          <span>Clientes</span>
+        </a>
+      </li>
+      <li class="nav-item mx-3">
+        <a class="nav-link d-flex align-items-center gap-2 fs-6" href="{% url 'locations' %}">
+          <img src="..\static\img\ubicaciones.png" alt="Logo" style="width: 40px; height: 40px;">
+          <span>Ubicaciones</span>
+        </a>
+      </li>
+      <li class="nav-item mx-3">
+        <a class="nav-link d-flex align-items-center gap-2 fs-6" href="{% url 'routes' %}">
+          <img src="..\static\img\rutas.png" alt="Logo" style="width: 40px; height: 40px;">
+          <span>Rutas</span>
+        </a>
+      </li>
+      <li class="nav-item mx-3">
+        <a class="nav-link d-flex align-items-center gap-2 fs-6" href="#">
+          <img src="..\static\img\estadisticas.png" alt="Logo" style="width: 40px; height: 40px;">
+          <span>Estadísticas</span>
+        </a>
+      </li>
+      <li class="nav-item mx-3">
+        <a class="nav-link d-flex align-items-center gap-2 fs-6" href="#">
+          <img src="..\static\img\puntosdeinteres.png" alt="Logo" style="width: 40px; height: 40px;">
+          <span>Puntos de Interés</span>
+        </a>
+      </li> 
+
+    </ul>
+
+    <hr class="my-3">
+    
+    <ul class="nav flex-column mt-auto">
+      
+      <li class="nav-item mx-3">
+        <form  method="POST">
+          {% csrf_token %}
+          <a class="nav-link d-flex align-items-center gap-2 fs-6" href="#">
+            <button class="nav-link d-flex align-items-center" type="submit" style="background: none; border: none; padding: 0; margin: 0;">
+              <img src="..\static\img\salir.png" alt="Logo" style="width: 40px; height: 40px;">
+          </button>
+          <span>Salir</span>
+          </a>
+        </form>
+
+      </li>
+    </ul>
+  
+  </div>
