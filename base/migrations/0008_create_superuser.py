@@ -11,7 +11,7 @@ def create_superuser(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('your_app', '0007_visitador_remove_visita_visitas_and_more'),  # Cambia esto si tienes migraciones previas
+        ('base', '0007_visitador_remove_visita_visitas_and_more'),  # Cambia esto si tienes migraciones previas
     ]
 
     operations = [
