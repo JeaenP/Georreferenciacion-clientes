@@ -1,347 +1,221 @@
-document.addEventListener("DOMContentLoaded", function() {
-    let map;
-    let markers = [];
-    let clientes = window.djangoVariables.clientes;
-    let clusters = window.djangoVariables.clusters;
-    let centroids = window.djangoVariables.centroids;
-    let currentFilter = 'todos';
-    let currentProducto = '';
-    let selectedClient = null;
-    const clusterColors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#808000", "#008000", "#800080", "#008080", "#000080", "#FF6347", "#4682B4", "#9ACD32", "#ADFF2F", "#32CD32", "#40E0D0", "#EE82EE", "#FF1493"];
-    const customIcon = window.djangoVariables.customIcon;
+{% extends 'base.html' %}
+{% load static %}
 
-    function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 14,
-            center: { lat: -3.99512, lng: -79.20136 } // Coordenadas de inicio
-        });
+{% block content %}
+<div>
+    <h2 class="mt-2" style="font-weight: 400">Ingresar y Trazar Ruta</h2>
+    <div class="my-3" id="map" style="height: 500px; width: 100%;"></div>
+    <div class="row">
+        <div class="col-8">
+            <div class="m-3">
+                <label for="clientes-select">Seleccionar Clientes:</label>
+                <div class="m-3">
+                    <button id="btn-trabajo" class="btn btn-custom btn-rounded" onclick="setDireccionType('trabajo')">
+                        Trabajo
+                    </button>
+                    <button id="btn-domicilio" class="btn btn-custom btn-rounded" onclick="setDireccionType('domicilio')">
+                        Domicilio
+                    </button>
+                </div>
+                <div id="clientes-select" class="select-scroll">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Nombre</th>
+                                <th>Tipo Dirección</th>
+                                <th>Producto Principal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-tbody">
+                            {% for cliente in clientesDJ %}
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" value="{{ cliente.id }}" id="cliente{{ cliente.id }}"></td>
+                                <td>{{ cliente.nombre_cliente }}</td>
+                                <td>{{ cliente.tipo_direccion_cliente }}</td>
+                                <td>{{ cliente.producto_principal }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="m-3">
+                <label for="visitador-select">Seleccionar Visitador:</label>
+                <select id="visitador-select" class="form-select select-custom" style=" font-size: 14px" >
+                    {% for visitador in visitadores %}
+                        <option value="{{ visitador.id }}">{{ visitador.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="row my-3 ">
+                <h1><h1>
+            </div>
+            <div class="row m-3">
+                <button id="ingresar-ubicacion" class="btn btn-custom btn-rounded" onclick="enableLocationSelection()">Ingresar ubicación de inicio</button>
+            </div>
+            <div class="row m-3">
+                <button id="trazar-ruta" class="btn btn-custom btn-rounded" onclick="traceRoute()">Trazar Ruta</button>
+            </div>
+            <label for="modo-viaje">Modo de Viaje:</label>
+            <div class="m-3">
+                <button id="btn-driving" class="btn btn-custom btn-rounded" onclick="setTravelMode('DRIVING')">
+                    <img src="{% static 'img/driving.png' %}" alt="Driving Icon" class="icon" id="driving-icon">
+                    Manejando
+                </button>
+                <button id="btn-walking" class="btn btn-custom btn-rounded" onclick="setTravelMode('WALKING')">
+                    <img src="{% static 'img/walking.png' %}" alt="Walking Icon" class="icon" id="walking-icon">
+                    Caminando
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="visitaModal" class="modal">
+    <div class="modal-content">
+        <h4>Registro de visita</h4>
+        <label class="text-sm"> <strong>Cliente:</strong> <span id="clienteNombre"></span> </label>
+        <label class="text-sm">Seleccione si la visita fue exitosa</label>
+        <div class="modal-buttons">
+            <button id="visitaSi" class="btn btn-success" onclick="confirmVisita(true)">Sí</button>
+            <button id="visitaNo" class="btn btn-danger" onclick="confirmVisita(false)">No</button>
+        </div>
+    </div>
+</div>
 
-        addMarkers(currentFilter, currentProducto);
-        document.getElementById('btn-todos').classList.add('btn-custom-selected');
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAWcxXZO36iZusfLvs4CZeOLplPir5DlvY&libraries=places,directions" defer></script>
+<script>
+    const djangoVariables = {
+        clientes: JSON.parse('{{ clientes|escapejs }}'),
+        csrfToken: '{{ csrf_token }}',
+        registrarVisitaUrl: '{% url "registrar_visita" %}',
+        customIcon: "{% static 'img/route_marker.png' %}"
+    };
+</script>
+<script src="{% static 'js/routes_script.js' %}" defer>  </script>
 
-        const searchQuery = window.djangoVariables.searchQuery;
-        if (searchQuery && searchQuery !== 'None') {
-            document.getElementById('search-client').value = searchQuery;
-            searchClient();
-        }
+
+
+
+<style>
+    .custom-infowindow .etiqueta{
+        font-size: 14px;
+        font-weight: 500;
+        display: inline;
+    }
+    .custom-infowindow .titulo{
+        font-size: 14px;
+        color: #75BC20;
+        font-weight: 600;
+    }
+    .btn-custom {
+        background-color: white;
+        color: #435058;
+        border: 1px solid #75BC20;
+        font-weight: 600;
+    }
+    .btn-custom-selected {
+        background-color: #75BC20;
+        color: white;
+        border: 1px solid #75BC20;
+        font-weight: 600;
+    }
+    .btn-rounded {
+        border-radius: 20px;
+    }
+    .btn-custom:hover {
+        background-color: white;
+        color: #75BC20;
+        border: 1px solid #75BC20;
+    }
+    .btn-custom-selected:hover {
+        background-color: #75BC20;
+        color: white;
+        border: 1px solid #75BC20;
+    }
+    .select-custom {
+        background-color: white;
+        color: #00000;
+        border: 1px solid #75BC20;
+        font-weight: 600;
+        border-radius: 20px;
+        padding: 0.375rem 0.75rem;  
+        width: 100%;
+    }
+    .select-custom:focus {
+        border-color: #75BC20;
+        box-shadow: none;
+    }
+    .select-scroll {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #435058;
+        border-radius: 20px;
+        padding: 10px;
+        
+    }
+    .icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        transition: filter 0.3s;
+    }
+    .icon-selected {
+        filter: invert(2) brightness(2);
+    }
+    .modal {
+        display: none; 
+        position: fixed; 
+        z-index: 1; 
+        left: 0;
+        top: 0;
+        width: 100%; 
+        height: 100%; 
+        overflow: auto; 
+        background-color: rgb(0,0,0); 
+        background-color: rgba(0,0,0,0.4); 
+        padding-top: 60px; 
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto; 
+        padding: 20px;
+        border: 1px solid #888;
+        width: 20%; 
+        text-align: center;
+        border-radius: 10px;
+    }
+    .modal-buttons {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 20px;
+    }
+    .btn-success {
+        background-color: #28a745;
+        border: none;
+        color: white;
+        padding: 10px 40px;
+        text-align: center;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .btn-danger {
+        background-color: #dc3545;
+        border: none;
+        color: white;
+        padding: 10px 40px;
+        text-align: center;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .btn-success:hover, .btn-danger:hover {
+        opacity: 0.8;
     }
 
-    function addMarkers(filter, producto = '') {
-        console.log("Add markers called with filter:", filter, "and product:", producto);
-        clearMarkers();
+</style>
+{% endblock content %}
 
-        if (filter === 'centroid') {
-            centroids.forEach(function (centroid) {
-                var lat = parseFloat(centroid['avg_latitud']);
-                var lng = parseFloat(centroid['avg_longitud']);
-                console.log("Centroid coordinates:", lat, lng);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    var marker = new google.maps.Marker({
-                        position: { lat: lat, lng: lng },
-                        map: map,
-                        title: `Cluster: ${centroid.cluster_direccion}`,
-                        icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: centroid.count_clients / 4 + 10,
-                            fillColor: clusterColors[centroid.cluster_direccion % clusterColors.length],
-                            fillOpacity: 1,
-                            strokeWeight: 1,
-                            strokeColor: '#000000'
-                        }
-                    });
-
-                    var infoWindow = new google.maps.InfoWindow({
-                        content: `
-                                <div class="custom-infowindow">
-                                    <div class="titulo">Cluster ${centroid.cluster_direccion}</div><br>
-                                    <div class="etiqueta">Número de clientes: </div>${centroid.count_clients}<br>
-                                </div>`
-                    });
-
-                    marker.addListener('mouseover', function () {
-                        infoWindow.open(map, marker);
-                    });
-
-                    marker.addListener('mouseout', function () {
-                        infoWindow.close();
-                    });
-
-                    markers.push(marker);
-                }
-            });
-        } else if (filter === 'cluster') {
-            clusters.forEach(function (cluster) {
-                var lat = parseFloat(cluster['cliente__latitud_domicilio']);
-                var lng = parseFloat(cluster['cliente__longitud_domicilio']);
-                console.log("Cluster coordinates:", lat, lng);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    var marker = new google.maps.Marker({
-                        position: { lat: lat, lng: lng },
-                        map: map,
-                        title: `${cluster.cliente__nombre_cliente} (Cluster: ${cluster.cluster_direccion})`,
-                        icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 5,
-                            fillColor: clusterColors[cluster.cluster_direccion % clusterColors.length],
-                            fillOpacity: 1,
-                            strokeWeight: 0.1,
-                            strokeColor: '#000000'
-                        }
-                    });
-
-                    var infoWindow = new google.maps.InfoWindow({
-                        content: `
-                                <div class="custom-infowindow">
-                                    <strong>${cluster.cliente__nombre_cliente}</strong><br>
-                                    Cluster - ${cluster.cluster_direccion}
-                                </div>`
-                    });
-
-                    marker.addListener('mouseover', function () {
-                        infoWindow.open(map, marker);
-                    });
-
-                    marker.addListener('mouseout', function () {
-                        infoWindow.close();
-                    });
-
-                    markers.push(marker);
-                }
-            });
-        } else if (filter === 'single' && selectedClient) {
-            console.log("Selected client:", selectedClient);
-            if (selectedClient.tipo_direccion_cliente === 'DOMICILIO') {
-                var lat = parseFloat(selectedClient.latitud_domicilio);
-                var lng = parseFloat(selectedClient.longitud_domicilio);
-                console.log("Single client domicilio coordinates:", lat, lng);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    var marker = new google.maps.Marker({
-                        position: { lat: lat, lng: lng },
-                        map: map,
-                        title: `${selectedClient.nombre_cliente} - ${selectedClient.producto_principal}`,
-                        icon: {
-                            url: customIcon,
-                            scaledSize: new google.maps.Size(32, 46),
-                        }
-                    });
-
-                    var infoWindow = new google.maps.InfoWindow({
-                        content: `
-                                <div class="custom-infowindow">
-                                    <div class="titulo">${selectedClient.nombre_cliente}</div><br>
-                                    <div class="etiqueta">Dirección: </div>${selectedClient.tipo_direccion_cliente}<br>
-                                    <div class="etiqueta">Vivienda: </div>${selectedClient.tipo_vivienda_cliente}<br>
-                                    <div class="etiqueta">Producto: </div>${selectedClient.producto_principal}<br>
-                                    <div class="etiqueta">Profesión: </div>${selectedClient.profesion_cliente}<br>
-                                </div>`
-                    });
-
-                    marker.addListener('mouseover', function () {
-                        infoWindow.open(map, marker);
-                    });
-
-                    marker.addListener('mouseout', function () {
-                        infoWindow.close();
-                    });
-
-                    markers.push(marker);
-                    map.setCenter({ lat: lat, lng: lng });
-                    map.setZoom(16);
-                }
-            } else if (selectedClient.tipo_direccion_cliente === 'TRABAJO') {
-                var lat = parseFloat(selectedClient.latitud_trabajo);
-                var lng = parseFloat(selectedClient.longitud_trabajo);
-                console.log("Single client trabajo coordinates:", lat, lng);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    var marker = new google.maps.Marker({
-                        position: { lat: lat, lng: lng },
-                        map: map,
-                        title: `${selectedClient.nombre_cliente} - ${selectedClient.producto_principal}`,
-                        icon: {
-                            url: window.djangoVariables.customIcon,
-                            scaledSize: new google.maps.Size(32, 46),
-                        }
-                    });
-
-                    var infoWindow = new google.maps.InfoWindow({
-                        content: `
-                                <div class="custom-infowindow">
-                                    <div class="titulo">${selectedClient.nombre_cliente}</div><br>
-                                    <div class="etiqueta">Dirección: </div>${selectedClient.tipo_direccion_cliente}<br>
-                                    <div class="etiqueta">Vivienda: </div>${selectedClient.tipo_vivienda_cliente}<br>
-                                    <div class="etiqueta">Producto: </div>${selectedClient.producto_principal}<br>
-                                    <div class="etiqueta">Profesión: </div>${selectedClient.profesion_cliente}<br>
-                                </div>`
-                    });
-
-                    marker.addListener('mouseover', function () {
-                        infoWindow.open(map, marker);
-                    });
-
-                    marker.addListener('mouseout', function () {
-                        infoWindow.close();
-                    });
-
-                    markers.push(marker);
-                    map.setCenter({ lat: lat, lng: lng });
-                    map.setZoom(16);
-                }
-            }
-        } else {
-            console.log("Processing clientes for filter:", filter);
-            clientes.forEach(function (cliente) {
-                if (producto && cliente.producto_principal !== producto) {
-                    return;
-                }
-
-                if (filter === 'todos' || filter === 'domicilio') {
-                    var latDomicilio = parseFloat(cliente['latitud_domicilio']);
-                    var lngDomicilio = parseFloat(cliente['longitud_domicilio']);
-                    console.log("Cliente domicilio coordinates:", cliente.nombre_cliente, latDomicilio, lngDomicilio);
-                    if (!isNaN(latDomicilio) && !isNaN(lngDomicilio)) {
-                        console.log("Adding domicilio marker for cliente:", cliente.nombre_cliente);
-                        var markerDomicilio = new google.maps.Marker({
-                            position: { lat: latDomicilio, lng: lngDomicilio },
-                            map: map,
-                            title: `${cliente.nombre_cliente} (Domicilio) - ${cliente.producto_principal}`,
-                            icon: {
-                                url: customIcon,
-                                scaledSize: new google.maps.Size(32, 46),
-                            }
-                        });
-
-                        var infoWindowDomicilio = new google.maps.InfoWindow({
-                            content: `
-                                    <div class="custom-infowindow">
-                                        <div class="titulo">${cliente.nombre_cliente}</div><br>
-                                        <div class="etiqueta">Dirección: </div>Domicilio<br>
-                                        <div class="etiqueta">Vivienda: </div>${cliente.tipo_vivienda_cliente}<br>
-                                        <div class="etiqueta">Producto: </div>${cliente.producto_principal}<br>
-                                        <div class="etiqueta">Profesión: </div>${cliente.profesion_cliente}<br>
-                                    </div>`
-                        });
-
-                        markerDomicilio.addListener('mouseover', function () {
-                            infoWindowDomicilio.open(map, markerDomicilio);
-                        });
-
-                        markerDomicilio.addListener('mouseout', function () {
-                            infoWindowDomicilio.close();
-                        });
-
-                        markers.push(markerDomicilio);
-                    }
-                }
-
-                if (filter === 'todos' || filter === 'trabajo') {
-                    var latTrabajo = parseFloat(cliente['latitud_trabajo']);
-                    var lngTrabajo = parseFloat(cliente['longitud_trabajo']);
-                    console.log("Cliente trabajo coordinates:", cliente.nombre_cliente, latTrabajo, lngTrabajo);
-                    if (!isNaN(latTrabajo) && !isNaN(lngTrabajo)) {
-                        console.log("Adding trabajo marker for cliente:", cliente.nombre_cliente);
-                        var markerTrabajo = new google.maps.Marker({
-                            position: { lat: latTrabajo, lng: lngTrabajo },
-                            map: map,
-                            title: `${cliente.nombre_cliente} (Trabajo) - ${cliente.producto_principal}`,
-                            icon: {
-                                url: customIcon,
-                                scaledSize: new google.maps.Size(32, 46),
-                            }
-                        });
-
-                        var infoWindowTrabajo = new google.maps.InfoWindow({
-                            content: `
-                                    <div class="custom-infowindow">
-                                        <div class="titulo">${cliente.nombre_cliente}</div><br>
-                                        <div class="etiqueta">Dirección: </div>Trabajo<br>
-                                        <div class="etiqueta">Vivienda: </div>${cliente.tipo_vivienda_cliente}<br>
-                                        <div class="etiqueta">Producto: </div>${cliente.producto_principal}<br>
-                                        <div class="etiqueta">Profesión: </div>${cliente.profesion_cliente}<br>
-                                    </div>`
-                        });
-
-                        markerTrabajo.addListener('mouseover', function () {
-                            infoWindowTrabajo.open(map, markerTrabajo);
-                        });
-
-                        markerTrabajo.addListener('mouseout', function () {
-                            infoWindowTrabajo.close();
-                        });
-
-                        markers.push(markerTrabajo);
-                    }
-                }
-            });
-        }
-    }
-
-    function clearMarkers() {
-        markers.forEach(function (marker) {
-            marker.setMap(null);
-        });
-        markers = [];
-    }
-
-    function filterMarkers(filter, button) {
-        console.log("Filter markers called with filter:", filter);
-        currentFilter = filter;
-        addMarkers(currentFilter, currentProducto);
-        document.querySelectorAll('.btn-custom-selected').forEach(function (btn) {
-            btn.classList.remove('btn-custom-selected');
-            btn.classList.add('btn-custom');
-        });
-        button.classList.remove('btn-custom');
-        button.classList.add('btn-custom-selected');
-    }
-
-    function filterByProducto(select) {
-        console.log("Filter by product called with product:", select.value);
-        currentProducto = select.value;
-        addMarkers(currentFilter, currentProducto);
-    }
-
-    function searchClient() {
-        let input = document.getElementById('search-client');
-        let query = input.value.toLowerCase();
-        let matchedClient = clientes.find(cliente => cliente.nombre_cliente.toLowerCase().includes(query));
-        console.log("Search client called with query:", query);
-
-        if (matchedClient) {
-            selectedClient = matchedClient;
-            filterMarkers('single');
-        }
-    }
-
-    document.getElementById('search-client').addEventListener('input', function () {
-        let input = this.value.toLowerCase();
-        let suggestions = clientes.filter(cliente => cliente.nombre_cliente.toLowerCase().includes(input));
-
-        let suggestionsList = document.getElementById('suggestions');
-        suggestionsList.innerHTML = '';
-
-        if (suggestions.length === 0 || input === '') {
-            suggestionsList.style.display = 'none';
-        } else {
-            suggestionsList.style.display = 'block';
-            suggestions.forEach(function (cliente) {
-                let suggestionItem = document.createElement('a');
-                suggestionItem.href = '#';
-                suggestionItem.classList.add('list-group-item', 'list-group-item-action');
-                suggestionItem.textContent = cliente.nombre_cliente;
-                suggestionItem.onclick = function () {
-                    document.getElementById('search-client').value = cliente.nombre_cliente;
-                    suggestionsList.innerHTML = '';
-                    suggestionsList.style.display = 'none';
-                };
-                suggestionsList.appendChild(suggestionItem);
-            });
-        }
-    });
-
-    initMap();
-
-    // Expose functions to the global scope
-    window.filterMarkers = filterMarkers;
-    window.filterByProducto = filterByProducto;
-    window.searchClient = searchClient;
-});
