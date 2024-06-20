@@ -80,7 +80,7 @@
 
 
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDlVCgySWEMmwnXN7tJLSLqUBCy-UZlwio&libraries=marker" defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{google_maps_api_key}}&libraries=marker" defer></script>
 
 
 <script>
@@ -426,62 +426,7 @@
 
     window.onload = initMap;
 </script>
-<style>
-    .custom-infowindow .etiqueta{
-        font-size: 14px;
-        font-weight: 500;
-        display: inline;
-    }
-    .custom-infowindow .titulo{
-        font-size: 14px;
-        color: #75BC20;
-        font-weight: 600;
-    }
-    .btn-custom {
-        background-color: white;
-        border: 1px solid #75BC20;
-    }
-    .btn-custom-selected {
-        background-color: #75BC20;
-        color: white;
-        border: 1px solid #75BC20;
-    }
-    .btn-rounded {
-        border-radius: 20px;
-    }
-    .btn-custom:hover {
-        background-color: white;
-        color: #75BC20;
-        border: 1px solid #75BC20;
-    }
-    .btn-custom-selected:hover {
-        background-color: #75BC20;
-        color: white;
-        border: 1px solid #75BC20;
-    }
-    #suggestions {
-        position: absolute;
-        z-index: 1000;
-        background-color: white;
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        width: 15%;
-    }
-    #suggestions .list-group-item {
-        border: none;
-        padding: 3px;
-        cursor: pointer;
-    }
-    #suggestions .list-group-item:hover {
-        background-color: #f1f1f1;
-    }
-    .icon {
-        width: 20px;
-        height: 20px;
-    }
-
-</style>
+<link href="{% static 'styles/locations_styles.css' %}" rel="stylesheet"/>
 
 
 {% endblock content %}

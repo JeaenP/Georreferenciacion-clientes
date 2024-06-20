@@ -6,8 +6,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.db.models import Avg, Count, FloatField
 from django.db.models.functions import Cast
+from django.conf import settings
 
 def locations(request):
+    
     search_query = request.GET.get('search', None)
     clientes = Cliente.objects.all()
     clusters = Cluster.objects.all().select_related('cliente')
@@ -40,6 +42,7 @@ def locations(request):
         'centroids_json': json.dumps(centroids_list),
         'productos': productos,
         'search_query': search_query,
+        'google_maps_api_key': settings.GOOGLE_MAPS_API_KEY
     }
 
     return render(request, 'locations.html', context)

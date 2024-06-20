@@ -14,10 +14,22 @@ from pathlib import Path
 import os
 import pytz
 import dj_database_url
+import environ
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 TIME_ZONE = 'America/Guayaquil'
 USE_TZ = True
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+
+env = environ.Env(
+    # establece valores predeterminados y lanzadores de conversiones
+    DEBUG=(bool, False)
+)
+
+# Lee el archivo .env si está presente
+environ.Env.read_env(os.path.join(BASE_DIR, 'env/.env'))
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -25,10 +37,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', default='your secret key')
+SECRET_KEY = env('SECRET_KEY', default='your_secret_key')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = 'RENDER' not in os.environ
+# Configuración de Debug
+DEBUG = env('DEBUG', default=False)
+
+# Google Maps API Key
+GOOGLE_MAPS_API_KEY = env('GOOGLE_MAPS_API_KEY', default='your_default_api_key')
 
 ALLOWED_HOSTS = []
 
