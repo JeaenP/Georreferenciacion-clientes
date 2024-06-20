@@ -9,7 +9,16 @@ class ClienteResource(resources.ModelResource):
         import_id_fields = ['codigo_cliente']
 class ClienteAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     resource_class = ClienteResource
+
+class ClusterResource(resources.ModelResource):
+    class Meta:
+        model = Cluster
+        import_id_fields = ['cliente']
+
+class ClusterAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    resource_class = ClusterResource
+
 admin.site.register(Cliente, ImportExportModelAdmin)
 admin.site.register(Visita)
 admin.site.register(Visitador)
-admin.site.register(Cluster)
+admin.site.register(Cluster, ImportExportModelAdmin)
