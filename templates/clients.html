@@ -3,43 +3,70 @@
 {% block content %}
 <h2 class="my-3" style="font-weight: 400">Clientes</h2>
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <input type="text" class="form-control" id="search-input" placeholder="Buscar" style="border-color: #75BC20; font-size: 14px">
+<form method="get">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <input type="text" class="form-control" name="search" id="search-input" placeholder="Buscar" value="{{ search_query }}" style="border-color: #75BC20; font-size: 14px">
+        </div>
+        <div class="col-md-2">
+            <select class="form-select select-custom" name="profesion" id="profesion-select" style="border-color: #75BC20; font-size: 14px">
+                <option value="">Todas las Profesiones</option>
+                {% for profesion in profesiones %}
+                    <option value="{{ profesion }}" {% if profesion == profesion_filter %}selected{% endif %}>{{ profesion }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select select-custom" name="tipo_direccion" id="tipo-direccion-select" style="border-color: #75BC20; font-size: 14px">
+                <option value="">Tipo de Dirección</option>
+                {% for tipo in tipos_direccion %}
+                    <option value="{{ tipo }}" {% if tipo == tipo_direccion_filter %}selected{% endif %}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select select-custom" name="producto_principal" id="producto-principal-select" style="border-color: #75BC20; font-size: 14px">
+                <option value="">Todos los Productos</option>
+                {% for producto in productos_principales %}
+                    <option value="{{ producto }}" {% if producto == producto_principal_filter %}selected{% endif %}>{{ producto }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select select-custom" name="tipo_parroquia" id="tipo-parroquia-select" style="border-color: #75BC20; font-size: 14px">
+                <option value="">Tipo de Parroquia</option>
+                {% for tipo in tipos_parroquia %}
+                    <option value="{{ tipo }}" {% if tipo == tipo_parroquia_filter %}selected{% endif %}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
-    <div class="col-md-2">
-        <select class="form-select select-custom" id="profesion-select" style="border-color: #75BC20; font-size: 14px">
-            <option value="">Todas las Profesiones</option>
-            {% for profesion in profesiones %}
-                <option value="{{ profesion }}">{{ profesion }}</option>
-            {% endfor %}
-        </select>
+    
+    <div class="row">
+        <div class="col-md-10">
+            <div class="pagination">
+                <span class="step-links">
+                    {% if clientes.has_previous %}
+                        <a href="?page=1&search={{ search_query }}&profesion={{ profesion_filter }}&tipo_direccion={{ tipo_direccion_filter }}&producto_principal={{ producto_principal_filter }}&tipo_parroquia={{ tipo_parroquia_filter }}">&laquo; primero</a>
+                        <a href="?page={{ clientes.previous_page_number }}&search={{ search_query }}&profesion={{ profesion_filter }}&tipo_direccion={{ tipo_direccion_filter }}&producto_principal={{ producto_principal_filter }}&tipo_parroquia={{ tipo_parroquia_filter }}">anterior</a>
+                    {% endif %}
+            
+                    <span class="current">
+                        Página {{ clientes.number }} de {{ clientes.paginator.num_pages }}.
+                    </span>
+            
+                    {% if clientes.has_next %}
+                        <a href="?page={{ clientes.next_page_number }}&search={{ search_query }}&profesion={{ profesion_filter }}&tipo_direccion={{ tipo_direccion_filter }}&producto_principal={{ producto_principal_filter }}&tipo_parroquia={{ tipo_parroquia_filter }}">siguiente</a>
+                        <a href="?page={{ clientes.paginator.num_pages }}&search={{ search_query }}&profesion={{ profesion_filter }}&tipo_direccion={{ tipo_direccion_filter }}&producto_principal={{ producto_principal_filter }}&tipo_parroquia={{ tipo_parroquia_filter }}">último &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary" style="border-color: #676767; background-color: #676767; font-size: 14px ; width: 100%">Filtrar</button>
+        </div>
     </div>
-    <div class="col-md-2">
-        <select class="form-select select-custom" id="tipo-direccion-select" style="border-color: #75BC20; font-size: 14px">
-            <option value="">Tipo de Dirección</option>
-            {% for tipo in tipos_direccion %}   
-                <option value="{{ tipo }}">{{ tipo }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select class="form-select select-custom" id="producto-principal-select" style="border-color: #75BC20; font-size: 14px">
-            <option value="">Todos los Productos</option>
-            {% for producto in productos_principales %}
-                <option value="{{ producto }}">{{ producto }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select class="form-select select-custom" id="tipo-parroquia-select" style="border-color: #75BC20; font-size: 14px">
-            <option value="">Tipo de Parroquia</option>
-            {% for tipo in tipos_parroquia %}
-                <option value="{{ tipo }}">{{ tipo }}</option>
-            {% endfor %}
-        </select>
-    </div>
-</div>
+</form>
 
 <div class="app-table mb-5">
     <div class="app-table-container">
@@ -74,7 +101,6 @@
                     <th>Longitud Domicilio</th>
                     <th>Latitud Trabajo</th>
                     <th>Longitud Trabajo</th>
-                    
                 </tr>
             </thead>
             <tbody>
@@ -116,7 +142,6 @@
                     <td>{{ cliente.longitud_domicilio }}</td>
                     <td>{{ cliente.latitud_trabajo }}</td>
                     <td>{{ cliente.longitud_trabajo }}</td>
-                    
                 </tr>
                 {% endfor %}
             </tbody>
@@ -124,7 +149,9 @@
     </div>
 </div>
 
+
+
 <link href="{% static 'styles/clients_styles.css' %}" rel="stylesheet"/>
-<script src="{% static 'js/clients_script.js' %}">  </script>
+<script src="{% static 'js/clients_script.js' %}"></script>
 
 {% endblock content %}

@@ -7,6 +7,8 @@ from django.http import JsonResponse
 from django.db.models import Avg, Count, FloatField
 from django.db.models.functions import Cast
 from django.conf import settings
+from django.core.paginator import Paginator
+from django.db.models import Q
 
 def locations(request):
     
@@ -48,17 +50,57 @@ def locations(request):
     return render(request, 'locations.html', context)
 
 def clients(request):
-    clientes = Cliente.objects.all()
+    clientes_query = Cliente.objects.all()
+
+    # Capturar los valores de los filtros desde el request
+    search_query = request.GET.get('search', '')
+    profesion_filter = request.GET.get('profesion', '')
+    tipo_direccion_filter = request.GET.get('tipo_direccion', '')
+    producto_principal_filter = request.GET.get('producto_principal', '')
+    tipo_parroquia_filter = request.GET.get('tipo_parroquia', '')
+
+    # Aplicar filtros
+    if search_query:
+        clientes_query = clientes_query.filter(
+            Q(nombre_cliente__icontains=search_query) |
+            Q(codigo_cliente__icontains=search_query) |
+            Q(profesion_cliente__icontains=search_query) |
+            Q(tipo_documento__icontains=search_query)
+        )
+
+    if profesion_filter:
+        clientes_query = clientes_query.filter(profesion_cliente=profesion_filter)
+
+    if tipo_direccion_filter:
+        clientes_query = clientes_query.filter(tipo_direccion_cliente=tipo_direccion_filter)
+
+    if producto_principal_filter:
+        clientes_query = clientes_query.filter(producto_principal=producto_principal_filter)
+
+    if tipo_parroquia_filter:
+        clientes_query = clientes_query.filter(tipo_parroquia_residencia_trabajo_cliente=tipo_parroquia_filter)
+
+    # Paginación de resultados después de aplicar filtros
+    paginator = Paginator(clientes_query, 10)  # Muestra 10 clientes por página
+    page_number = request.GET.get('page')
+    clientes = paginator.get_page(page_number)
+
     profesiones = Cliente.objects.values_list('profesion_cliente', flat=True).exclude(profesion_cliente__exact='').distinct()
     tipos_direccion = Cliente.objects.values_list('tipo_direccion_cliente', flat=True).distinct()
     productos_principales = Cliente.objects.values_list('producto_principal', flat=True).distinct()
     tipos_parroquia = Cliente.objects.values_list('tipo_parroquia_residencia_trabajo_cliente', flat=True).exclude(tipo_parroquia_residencia_trabajo_cliente__exact='').distinct()
+
     context = {
         'clientes': clientes,
         'profesiones': profesiones,
         'tipos_direccion': tipos_direccion,
         'productos_principales': productos_principales,
         'tipos_parroquia': tipos_parroquia,
+        'search_query': search_query,
+        'profesion_filter': profesion_filter,
+        'tipo_direccion_filter': tipo_direccion_filter,
+        'producto_principal_filter': producto_principal_filter,
+        'tipo_parroquia_filter': tipo_parroquia_filter,
     }
 
     return render(request, 'clients.html', context)

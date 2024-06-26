@@ -23,3 +23,38 @@
     font-size: medium;
     min-width: 190px;
 }
+
+.pagination {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.pagination .step-links {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.pagination .step-links a {
+    color: #fff;
+    background-color: #75BC20;
+    border: 1px solid transparent;
+    padding: 5px 10px;
+    text-decoration: none;
+    border-radius: 5px;
+    margin: 0 2px;
+}
+
+.pagination .step-links a:hover,
+.pagination .step-links a:focus {
+    background-color: #4a8f15;
+    border-color: #366c11;
+}
+
+.pagination .step-links .current {
+    padding: 5px 10px;
+    background: #ddd;
+    color: #333;
+    border-radius: 5px;
+    margin: 0 2px;
+}
