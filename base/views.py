@@ -9,6 +9,18 @@ from django.db.models.functions import Cast
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Q
+import plotly.express as px
+import plotly.graph_objects as go
+from django.utils.timezone import now
+from datetime import timedelta
+from calendar import monthrange
+import calendar
+from dateutil.relativedelta import relativedelta
+import plotly.colors as pcolors
+import plotly.express as px
+
+
+
 
 def locations(request):
     
@@ -81,7 +93,7 @@ def clients(request):
         clientes_query = clientes_query.filter(tipo_parroquia_residencia_trabajo_cliente=tipo_parroquia_filter)
 
     # Paginación de resultados después de aplicar filtros
-    paginator = Paginator(clientes_query, 10)  # Muestra 10 clientes por página
+    paginator = Paginator(clientes_query, 100)  # Muestra 10 clientes por página
     page_number = request.GET.get('page')
     clientes = paginator.get_page(page_number)
 
@@ -145,3 +157,145 @@ def visits(request):
     }
 
     return render(request, 'visits.html', context)
+
+
+from django.shortcuts import render
+import plotly.express as px
+import plotly.graph_objects as go
+from .models import Cliente, Visita, Visitador, Cluster
+from django.db.models import Count, Q
+from django.utils.timezone import now
+from datetime import timedelta
+
+def statistics(request):
+    mapbox_access_token = 'pk.eyJ1IjoiamVhZW4iLCJhIjoiY2x4d2d0aWE1MjM3ZzJrcTNtZ3F4cWswYyJ9.Z114ZAl2fwrL5oxgsrEGog'
+
+    # Obtiene el gráfico solicitado
+    chart_type = request.GET.get('chart_type', 'heatmap')
+    time_period_str = request.GET.get('time_period', '1')
+    start_month_str = request.GET.get('start_month', str(now().month))
+
+    try:
+        time_period = int(time_period_str)
+    except ValueError:
+        time_period = 1  # Valor predeterminado
+
+    try:
+        start_month = int(start_month_str)
+    except ValueError:
+        start_month = now().month  # Valor predeterminado
+
+    requires_time_filters = chart_type in ['visitas_efectivas', 'visitas_colaborador']
+
+    if chart_type == 'heatmap':
+        heatmap_data = Cliente.objects.filter(latitud_domicilio__isnull=False, longitud_domicilio__isnull=False).values('latitud_domicilio', 'longitud_domicilio')
+        heatmap_data = [
+            {
+                'latitud_domicilio': float(cliente['latitud_domicilio']),
+                'longitud_domicilio': float(cliente['longitud_domicilio']),
+                'count': 1
+            }
+            for cliente in heatmap_data
+            if cliente['latitud_domicilio'] and cliente['longitud_domicilio']
+        ]
+        fig = px.density_mapbox(
+            heatmap_data,
+            lat='latitud_domicilio',
+            lon='longitud_domicilio',
+            z='count',
+            radius=10,
+            center=dict(lat=-3.99512, lon=-79.20136),
+            zoom=15,
+            mapbox_style="streets"
+        )
+        fig.update_layout(
+            mapbox_accesstoken=mapbox_access_token,
+            height= 700  # Ajusta la altura aquí
+        )
+        
+    elif chart_type == 'visitas_efectivas':
+        today = now()
+        start_date = today.replace(month=start_month, day=1)
+        end_date = start_date + relativedelta(months=time_period) - relativedelta(days=1)
+        visitas_mes = Visita.objects.filter(fecha_hora__gte=start_date, fecha_hora__lte=end_date)
+
+        dates = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+
+        efectivas = [visitas_mes.filter(exitosa=True, fecha_hora__day=day.day, fecha_hora__month=day.month).count() for day in dates]
+        no_efectivas = [visitas_mes.filter(exitosa=False, fecha_hora__day=day.day, fecha_hora__month=day.month).count() for day in dates]
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=dates,
+            y=efectivas,
+            mode='lines', name='Efectivas',
+            line=dict(color='green')
+        ))
+        fig.add_trace(go.Scatter(
+            x=dates,
+            y=no_efectivas,
+            mode='lines', name='No Efectivas',
+            line=dict(color='red')
+        ))
+        fig.update_layout(title='Evolución de Visitas Efectivas y No Efectivas', xaxis_title='Fecha', yaxis_title='Número de Visitas', height= 700)
+    
+    elif chart_type == 'visitas_colaborador':
+        today = now()
+        start_date = today.replace(month=start_month, day=1)
+        end_date = start_date + relativedelta(months=time_period) - relativedelta(days=1)
+        visitas_mes = Visita.objects.filter(fecha_hora__gte=start_date, fecha_hora__lte=end_date)
+
+        dates = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+        colaboradores = Visitador.objects.all()
+
+        colors = px.colors.sequential.Aggrnyl
+
+        fig = go.Figure()
+        for i, colaborador in enumerate(colaboradores):
+            color = colors[i % len(colors)]
+            visitas_colaborador = [visitas_mes.filter(visitador=colaborador, fecha_hora__day=day.day, fecha_hora__month=day.month).count() for day in dates]
+            fig.add_trace(go.Scatter(
+                x=dates,
+                y=visitas_colaborador,
+                mode='lines',
+                name=colaborador.nombre,
+                line=dict(color=color)
+            ))
+
+        fig.update_layout(title='Visitas por Colaborador', xaxis_title='Fecha', yaxis_title='Número de Visitas', height= 700)
+    elif chart_type == 'pie_producto':
+        productos = Cliente.objects.values('producto_principal').annotate(count=Count('id'))
+        fig = px.pie(productos, values='count', names='producto_principal', title='Distribución por Producto', height= 700)
+    elif chart_type == 'pie_sector':
+        sectores = Cliente.objects.values('parroquia_residencia_trabajo_cliente').annotate(count=Count('id'))
+        fig = px.pie(sectores, values='count', names='parroquia_residencia_trabajo_cliente', title='Distribución por Sector', height= 700)
+    elif chart_type == 'scatter_visitas_productos':
+        productos_visitas = Visita.objects.values('cliente__producto_principal').annotate(count=Count('id'))
+        fig = px.scatter(productos_visitas, x='cliente__producto_principal', y='count', title='Relación Visitas y Productos', height= 700)
+    elif chart_type == 'bar_productos_clientes':
+        productos_clientes = Cliente.objects.values('producto_principal').annotate(count=Count('id'))
+        fig = px.bar(productos_clientes, x='producto_principal', y='count', title='Productos por Clientes', height= 700)
+    elif chart_type == 'bar_visitas_efectivas_productos':
+        today = now()
+        start_of_month = today.replace(day=1)
+        visitas_mes = Visita.objects.filter(fecha_hora__gte=start_of_month)
+        productos_efectivas = visitas_mes.filter(exitosa=True).values('cliente__producto_principal').annotate(count=Count('id'))
+        productos_no_efectivas = visitas_mes.filter(exitosa=False).values('cliente__producto_principal').annotate(count=Count('id'))
+        fig = go.Figure(data=[
+            go.Bar(name='Efectivas', x=[p['cliente__producto_principal'] for p in productos_efectivas], y=[p['count'] for p in productos_efectivas]),
+            go.Bar(name='No Efectivas', x=[p['cliente__producto_principal'] for p in productos_no_efectivas], y=[p['count'] for p in productos_no_efectivas])
+        ])
+        fig.update_layout(barmode='group', title='Visitas Efectivas y No Efectivas por Producto', height= 700)
+    else:
+        fig = None
+
+    context = {
+        'fig': fig.to_html(full_html=False) if fig else None,
+        'chart_type': chart_type,
+        'time_period': time_period,
+        'start_month': start_month,
+        'requires_time_filters': requires_time_filters
+    }
+
+    return render(request, 'statistics.html', context)
+

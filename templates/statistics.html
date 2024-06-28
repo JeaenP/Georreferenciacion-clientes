@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load extra_filters %}
+{% block content %}
+<h2 class="mt-2" style="font-weight: 400">Estadísticas de Clientes y Visitas</h2>
+
+<div class="row">
+    <div class = "col-md-6">
+        <div class="form-group">
+            <label for="chart-select">Seleccione el gráfico que desea visualizar:</label>
+            <select class="form-control mt-3" id="chart-select" style="border-color: #75BC20; font-size: 14px">
+                <option value="heatmap" {% if chart_type == 'heatmap' %}selected{% endif %}>Mapa de Calor de Clientes</option>
+                <option value="visitas_efectivas" {% if chart_type == 'visitas_efectivas' %}selected{% endif %}>Evolución de Visitas Efectivas y No Efectivas</option>
+                <option value="visitas_colaborador" {% if chart_type == 'visitas_colaborador' %}selected{% endif %}>Visitas por Colaborador</option>
+                <option value="pie_producto" {% if chart_type == 'pie_producto' %}selected{% endif %}>Distribución de Clientes por Producto</option>
+                <option value="pie_sector" {% if chart_type == 'pie_sector' %}selected{% endif %}>Distribución de Clientes por Sector</option>
+                <option value="scatter_visitas_productos" {% if chart_type == 'scatter_visitas_productos' %}selected{% endif %}>Relación entre Visitas y Productos</option>
+                <option value="bar_productos_clientes" {% if chart_type == 'bar_productos_clientes' %}selected{% endif %}>Productos Principales por Número de Clientes</option>
+                <option value="bar_visitas_efectivas_productos" {% if chart_type == 'bar_visitas_efectivas_productos' %}selected{% endif %}>Visitas Efectivas y No Efectivas por Producto</option>
+            </select>
+        </div>
+    </div>
+    {% if requires_time_filters %}
+    <div class = "col-md-3">
+        <div class="form-group" >
+            <label for="time-period-select">Seleccione el período de tiempo:</label>
+            <select class="form-control mt-3" id="time-period-select" style="border-color: #75BC20; font-size: 14px">
+                <option value="1" {% if time_period == '1' %}selected{% endif %}>1 Mes</option>
+                <option value="3" {% if time_period == '3' %}selected{% endif %}>3 Meses</option>
+                <option value="6" {% if time_period == '6' %}selected{% endif %}>6 Meses</option>
+                <option value="12" {% if time_period == '12' %}selected{% endif %}>1 Año</option>
+            </select>
+        </div>
+    </div>
+    <div class = "col-md-3">
+        <div class="form-group">
+            <label for="month-select">Seleccione el mes de inicio:</label>
+            <select class="form-control mt-3" id="month-select" style="border-color: #75BC20; font-size: 14px">
+                {% for i in 1|to_months %}
+                <option value="{{ i }}" {% if start_month == i %}selected{% endif %}>{{ i|month_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+    </div>
+    {% endif %}
+    <div id="chart-container" style="height: 100vh;">
+        {% if fig %}
+            <div style="height: 100%; width: 100%;">{{ fig|safe }}</div>
+        {% endif %}
+    </div>
+</div>
+
+
+
+
+<script>
+    document.getElementById('chart-select').addEventListener('change', function() {
+        const selectedChart = this.value;
+        const timePeriod = document.getElementById('time-period-select') ? document.getElementById('time-period-select').value : '';
+        const startMonth = document.getElementById('month-select') ? document.getElementById('month-select').value : '';
+        window.location.href = `?chart_type=${selectedChart}&time_period=${timePeriod}&start_month=${startMonth}`;
+    });
+
+    if (document.getElementById('time-period-select')) {
+        document.getElementById('time-period-select').addEventListener('change', function() {
+            const selectedChart = document.getElementById('chart-select').value;
+            const timePeriod = this.value;
+            const startMonth = document.getElementById('month-select').value;
+            window.location.href = `?chart_type=${selectedChart}&time_period=${timePeriod}&start_month=${startMonth}`;
+        });
+
+        document.getElementById('month-select').addEventListener('change', function() {
+            const selectedChart = document.getElementById('chart-select').value;
+            const timePeriod = document.getElementById('time-period-select').value;
+            const startMonth = this.value;
+            window.location.href = `?chart_type=${selectedChart}&time_period=${timePeriod}&start_month=${startMonth}`;
+        });
+    }
+</script>
+
+{% endblock content %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
