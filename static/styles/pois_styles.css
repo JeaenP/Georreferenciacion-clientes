@@ -1,0 +1,56 @@
+.custom-infowindow .etiqueta {
+    font-size: 14px;
+    font-weight: 500;
+    display: inline;
+}
+.custom-infowindow .titulo {
+    font-size: 14px;
+    color: #75BC20;
+    font-weight: 600;
+}
+.btn-custom {
+    background-color: white;
+    border: 1px solid #75BC20;
+}
+.btn-custom-selected {
+    background-color: #75BC20;
+    color: white;
+    border: 1px solid #75BC20;
+}
+.btn-rounded {
+    border-radius: 20px;
+}
+.btn-custom:hover {
+    background-color: white;
+    color: #75BC20;
+    border: 1px solid #75BC20;
+}
+.btn-custom-selected:hover {
+    background-color: #75BC20;
+    color: white;
+    border: 1px solid #75BC20;
+}
+.icon {
+    width: 20px;
+    height: 20px;
+}
+
+#suggestions {
+    position: absolute;
+    z-index: 1000;
+    background-color: white;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    width: 15%;
+}
+#suggestions .list-group-item {
+    border: none;
+    padding: 3px;
+    cursor: pointer;
+}
+#suggestions .list-group-item:hover {
+    background-color: #f1f1f1;
+}
+
+

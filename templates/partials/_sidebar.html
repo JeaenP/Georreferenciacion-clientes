@@ -32,7 +32,7 @@
       </a>
     </li>
     <li class="nav-item mx-3">
-      <a class="nav-link d-flex align-items-center gap-2 fs-6 {% if request.resolver_match.url_name == 'points_of_interest' %}active{% endif %}" href="#">
+      <a class="nav-link d-flex align-items-center gap-2 fs-6 {% if request.resolver_match.url_name == 'pois' %}active{% endif %}" href="{% url 'pois' %}">
         <img src="{% static 'img/puntosdeinteres.png' %}" alt="Logo" style="width: 40px; height: 40px;">
         <span>Puntos de Interés</span>
       </a>

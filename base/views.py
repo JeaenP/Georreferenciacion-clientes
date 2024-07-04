@@ -1,7 +1,7 @@
 import json
 from django.shortcuts import render
 from django.http import HttpResponse
-from .models import Cliente, Visita, Visitador, Cluster
+from .models import Cliente, Visita, Visitador, Cluster, Agencia, Cajero, ComercioAhorita
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.db.models import Avg, Count, FloatField
@@ -31,15 +31,13 @@ def locations(request):
 
     clientes_list = list(clientes.values('nombre_cliente', 'latitud_domicilio', 'longitud_domicilio', 'latitud_trabajo', 'longitud_trabajo', 'producto_principal', 'profesion_cliente', 'tipo_vivienda_cliente', 'tipo_direccion_cliente'))
     clusters_list = list(clusters.values('cliente__nombre_cliente', 'cliente__latitud_domicilio', 'cliente__longitud_domicilio', 'cluster_direccion'))
-
-    # Calcular los centroides de los clusters
+    
     for cluster in clusters_list:
         if cluster['cliente__latitud_domicilio']:
             cluster['cliente__latitud_domicilio'] = float(cluster['cliente__latitud_domicilio'])
         if cluster['cliente__longitud_domicilio']:
             cluster['cliente__longitud_domicilio'] = float(cluster['cliente__longitud_domicilio'])
 
-    # Calcular los centroides de los clusters
     centroids = clusters.annotate(
         latitud_float=Cast('cliente__latitud_domicilio', FloatField()),
         longitud_float=Cast('cliente__longitud_domicilio', FloatField())
@@ -64,14 +62,12 @@ def locations(request):
 def clients(request):
     clientes_query = Cliente.objects.all()
 
-    # Capturar los valores de los filtros desde el request
     search_query = request.GET.get('search', '')
     profesion_filter = request.GET.get('profesion', '')
     tipo_direccion_filter = request.GET.get('tipo_direccion', '')
     producto_principal_filter = request.GET.get('producto_principal', '')
     tipo_parroquia_filter = request.GET.get('tipo_parroquia', '')
 
-    # Aplicar filtros
     if search_query:
         clientes_query = clientes_query.filter(
             Q(nombre_cliente__icontains=search_query) |
@@ -92,8 +88,7 @@ def clients(request):
     if tipo_parroquia_filter:
         clientes_query = clientes_query.filter(tipo_parroquia_residencia_trabajo_cliente=tipo_parroquia_filter)
 
-    # Paginación de resultados después de aplicar filtros
-    paginator = Paginator(clientes_query, 100)  # Muestra 10 clientes por página
+    paginator = Paginator(clientes_query, 100) 
     page_number = request.GET.get('page')
     clientes = paginator.get_page(page_number)
 
@@ -170,7 +165,6 @@ from datetime import timedelta
 def statistics(request):
     mapbox_access_token = 'pk.eyJ1IjoiamVhZW4iLCJhIjoiY2x4d2d0aWE1MjM3ZzJrcTNtZ3F4cWswYyJ9.Z114ZAl2fwrL5oxgsrEGog'
 
-    # Obtiene el gráfico solicitado
     chart_type = request.GET.get('chart_type', 'heatmap')
     time_period_str = request.GET.get('time_period', '1')
     start_month_str = request.GET.get('start_month', str(now().month))
@@ -178,12 +172,12 @@ def statistics(request):
     try:
         time_period = int(time_period_str)
     except ValueError:
-        time_period = 1  # Valor predeterminado
+        time_period = 1 
 
     try:
         start_month = int(start_month_str)
     except ValueError:
-        start_month = now().month  # Valor predeterminado
+        start_month = now().month 
 
     requires_time_filters = chart_type in ['visitas_efectivas', 'visitas_colaborador']
 
@@ -229,13 +223,13 @@ def statistics(request):
             x=dates,
             y=efectivas,
             mode='lines', name='Efectivas',
-            line=dict(color='green')
+            line=dict(color='#5ccb5f')
         ))
         fig.add_trace(go.Scatter(
             x=dates,
             y=no_efectivas,
             mode='lines', name='No Efectivas',
-            line=dict(color='red')
+            line=dict(color='#ef2947')
         ))
         fig.update_layout(title='Evolución de Visitas Efectivas y No Efectivas', xaxis_title='Fecha', yaxis_title='Número de Visitas', height= 700)
     
@@ -271,21 +265,27 @@ def statistics(request):
         fig = px.pie(sectores, values='count', names='parroquia_residencia_trabajo_cliente', title='Distribución por Sector', height= 700)
     elif chart_type == 'scatter_visitas_productos':
         productos_visitas = Visita.objects.values('cliente__producto_principal').annotate(count=Count('id'))
-        fig = px.scatter(productos_visitas, x='cliente__producto_principal', y='count', title='Relación Visitas y Productos', height= 700)
+        productos = [p['cliente__producto_principal'] for p in productos_visitas]
+        counts = [p['count'] for p in productos_visitas]
+        fig = px.scatter(x=productos, y=counts, text=counts, title='Relación Visitas y Productos', height= 700)
+        fig.update_traces(mode='markers+text', textposition='top center')
     elif chart_type == 'bar_productos_clientes':
         productos_clientes = Cliente.objects.values('producto_principal').annotate(count=Count('id'))
         fig = px.bar(productos_clientes, x='producto_principal', y='count', title='Productos por Clientes', height= 700)
     elif chart_type == 'bar_visitas_efectivas_productos':
-        today = now()
-        start_of_month = today.replace(day=1)
-        visitas_mes = Visita.objects.filter(fecha_hora__gte=start_of_month)
-        productos_efectivas = visitas_mes.filter(exitosa=True).values('cliente__producto_principal').annotate(count=Count('id'))
-        productos_no_efectivas = visitas_mes.filter(exitosa=False).values('cliente__producto_principal').annotate(count=Count('id'))
+        visitas = Visita.objects.all()
+        productos_efectivas = visitas.filter(exitosa=True).values('cliente__producto_principal').annotate(count=Count('id'))
+        productos_no_efectivas = visitas.filter(exitosa=False).values('cliente__producto_principal').annotate(count=Count('id'))
+
+        productos = list(set([p['cliente__producto_principal'] for p in productos_efectivas] + [p['cliente__producto_principal'] for p in productos_no_efectivas]))
+        efectivas_counts = [next((item['count'] for item in productos_efectivas if item['cliente__producto_principal'] == producto), 0) for producto in productos]
+        no_efectivas_counts = [next((item['count'] for item in productos_no_efectivas if item['cliente__producto_principal'] == producto), 0) for producto in productos]
+
         fig = go.Figure(data=[
-            go.Bar(name='Efectivas', x=[p['cliente__producto_principal'] for p in productos_efectivas], y=[p['count'] for p in productos_efectivas]),
-            go.Bar(name='No Efectivas', x=[p['cliente__producto_principal'] for p in productos_no_efectivas], y=[p['count'] for p in productos_no_efectivas])
+            go.Bar(name='Efectivas', x=productos, y=efectivas_counts, marker_color='#5ccb5f', text=efectivas_counts, textposition='outside'),
+            go.Bar(name='No Efectivas', x=productos, y=no_efectivas_counts, marker_color='#ef2947', text=no_efectivas_counts, textposition='outside')
         ])
-        fig.update_layout(barmode='group', title='Visitas Efectivas y No Efectivas por Producto', height= 700)
+        fig.update_layout(barmode='group', title='Visitas Efectivas y No Efectivas por Producto', xaxis_title='Producto', yaxis_title='Número de Visitas', height= 700)
     else:
         fig = None
 
@@ -299,3 +299,23 @@ def statistics(request):
 
     return render(request, 'statistics.html', context)
 
+def pois(request):
+    search_query = request.GET.get('search', None)
+
+    agencias = Agencia.objects.all()
+    comercios = ComercioAhorita.objects.all()
+    cajeros = Cajero.objects.all()
+
+    agencias_list = list(agencias.values('nombre', 'latitud', 'longitud', 'direccion'))
+    comercios_list = list(comercios.values('nombre_comercio', 'latitud', 'longitud', 'direccion', 'tipo_negocio', 'tiene_branding'))
+    cajeros_list = list(cajeros.values('nombre', 'latitud', 'longitud', 'direccion', 'codigo_cajero', 'agencia__nombre'))
+
+    context = {
+        'agencias_json': json.dumps(agencias_list),
+        'comercios_json': json.dumps(comercios_list),
+        'cajeros_json': json.dumps(cajeros_list),
+        'search_query': search_query,
+        'google_maps_api_key': settings.GOOGLE_MAPS_API_KEY
+    }
+
+    return render(request, 'pois.html', context)

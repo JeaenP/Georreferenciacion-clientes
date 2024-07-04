@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div onload="initMap()">
+
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mt-3" style="font-weight: 400">Mapa de Points of Interest (PoI)</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-3 my-1 ">
+            <div class="input-group">
+                <input type="text" id="search-poi" class="form-control " placeholder="Buscar PoI" style="border-color: #75BC20; font-size: 14px">
+                <button class="btn" type="button" onclick="searchPoi()">
+                    <img src="{% static 'img/buscar.png' %}" alt="Buscar Icon" class="icon">
+                </button>
+            </div>
+            <div class="row">
+                <div class="col-4">
+                    <div id="suggestions" style="display: none; font-size: 12px;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-6 ">
+            <button id="btn-todos" class="btn btn-custom btn-rounded my-1" onclick="filterMarkers('todos', this)">Todos</button>
+            <button id="btn-agencias" class="btn btn-custom btn-rounded my-1" onclick="filterMarkers('agencias', this)">Agencias</button>
+            <button id="btn-cajeros" class="btn btn-custom btn-rounded my-1" onclick="filterMarkers('cajeros', this)">Cajeros</button>
+            <button id="btn-comercios" class="btn btn-custom btn-rounded my-1" onclick="filterMarkers('comercios', this)">Comercios Ahorita</button>
+        </div>
+    </div>
+    
+    <div class="row m-2">
+        <div class="card p-3">
+            <div id="map" style="height: 500px; width: 100%;"></div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key={{google_maps_api_key}}&libraries=marker" defer></script>
+
+<script>
+    let map;
+    let markers = [];
+    let agencias = JSON.parse('{{ agencias_json|escapejs }}');
+    let comercios = JSON.parse('{{ comercios_json|escapejs }}');
+    let cajeros = JSON.parse('{{ cajeros_json|escapejs }}');
+    let currentFilter = 'todos';
+    let selectedPoi = null;
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 14,
+            center: {lat: -3.99512, lng: -79.20136} // Coordenadas de inicio
+        });
+
+        addMarkers(currentFilter);
+        document.getElementById('btn-todos').classList.add('btn-custom-selected');
+
+        const searchQuery = '{{ search_query }}';
+        if (searchQuery && searchQuery !== 'None') {
+            document.getElementById('search-poi').value = searchQuery;
+            searchPoi();
+        }
+    }
+
+    function addMarkers(filter) {
+        clearMarkers();
+
+        if (filter === 'agencias') {
+            agencias.forEach(function(agencia) {
+                var lat = parseFloat(agencia['latitud']);
+                var lng = parseFloat(agencia['longitud']);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${agencia.nombre} (Agencia)`,
+                        icon: {
+                            url: "{% static 'img/agencia_marker.png' %}",
+                            scaledSize: new google.maps.Size(46, 46),
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <div class="titulo">${agencia.nombre}</div><br>
+                                <div class="etiqueta">Dirección: </div>${agencia.direccion}<br>
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                }
+            });
+        } else if (filter === 'cajeros') {
+            cajeros.forEach(function(cajero) {
+                var lat = parseFloat(cajero['latitud']);
+                var lng = parseFloat(cajero['longitud']);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${cajero.nombre} (Cajero)`,
+                        icon: {
+                            url: "{% static 'img/cajero_marker.png' %}",
+                            scaledSize: new google.maps.Size(46, 46),
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <div class="titulo">${cajero.nombre}</div><br>
+                                <div class="etiqueta">Código: </div>${cajero.codigo_cajero}<br>
+                                <div class="etiqueta">Dirección: </div>${cajero.direccion}<br>
+                                <div class="etiqueta">Agencia: </div>${cajero.agencia__nombre}<br>
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                }
+            });
+        } else if (filter === 'comercios') {
+            comercios.forEach(function(comercio) {
+                var lat = parseFloat(comercio['latitud']);
+                var lng = parseFloat(comercio['longitud']);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${comercio.nombre_comercio} (Comercio)`,
+                        icon: {
+                            url: "{% static 'img/comercio_marker.png' %}",
+                            scaledSize: new google.maps.Size(46, 46),
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <div class="titulo">${comercio.nombre_comercio}</div><br>
+                                <div class="etiqueta">Tipo de negocio: </div>${comercio.tipo_negocio}<br>
+                                <div class="etiqueta">Dirección: </div>${comercio.direccion}<br>
+                                <div class="etiqueta">Branding: </div>${comercio.tiene_branding ? 'Sí' : 'No'}<br>
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                }
+            });
+        } else if (filter === 'single' && selectedPoi) {
+            const lat = parseFloat(selectedPoi.latitud);
+            const lng = parseFloat(selectedPoi.longitud);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                var marker = new google.maps.Marker({
+                    position: {lat: lat, lng: lng},
+                    map: map,
+                    title: `${selectedPoi.nombre || selectedPoi.nombre_comercio} (${selectedPoi.codigo || selectedPoi.codigo_cajero || selectedPoi.tipo_negocio})`,
+                    icon: {
+                        url: "{% static 'img/poi_marker.png' %}",
+                        scaledSize: new google.maps.Size(46, 46),
+                    }
+                });
+
+                var infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div class="custom-infowindow">
+                            <div class="titulo">${selectedPoi.nombre || selectedPoi.nombre_comercio}</div><br>
+                            <div class="etiqueta">Dirección: </div>${selectedPoi.direccion}<br>
+                            ${selectedPoi.tipo_negocio ? `<div class="etiqueta">Tipo de negocio: </div>${selectedPoi.tipo_negocio}<br>` : ''}
+                            ${selectedPoi.tiene_branding !== undefined ? `<div class="etiqueta">Branding: </div>${selectedPoi.tiene_branding ? 'Sí' : 'No'}<br>` : ''}
+                            ${selectedPoi.codigo_cajero ? `<div class="etiqueta">Código Cajero: </div>${selectedPoi.codigo_cajero}<br>` : ''}
+                            ${selectedPoi.agencia__nombre ? `<div class="etiqueta">Agencia: </div>${selectedPoi.agencia__nombre}<br>` : ''}
+                        </div>`
+                });
+
+                marker.addListener('mouseover', function() {
+                    infoWindow.open(map, marker);
+                });
+
+                marker.addListener('mouseout', function() {
+                    infoWindow.close();
+                });
+
+                markers.push(marker);
+                map.setCenter({lat: lat, lng: lng});
+                map.setZoom(16);
+            }
+        } else {
+            agencias.concat(cajeros).concat(comercios).forEach(function(poi) {
+                var lat = parseFloat(poi.latitud);
+                var lng = parseFloat(poi.longitud);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    var marker = new google.maps.Marker({
+                        position: {lat: lat, lng: lng},
+                        map: map,
+                        title: `${poi.nombre || poi.nombre_comercio} (${poi.codigo || poi.codigo_cajero || poi.tipo_negocio})`,
+                        icon: {
+                            url: "{% static 'img/poi_marker.png' %}",
+                            scaledSize: new google.maps.Size(46, 46),
+                        }
+                    });
+
+                    var infoWindow = new google.maps.InfoWindow({
+                        content: `
+                            <div class="custom-infowindow">
+                                <div class="titulo">${poi.nombre || poi.nombre_comercio}</div><br>
+                                <div class="etiqueta">Dirección: </div>${poi.direccion}<br>
+                                ${poi.tipo_negocio ? `<div class="etiqueta">Tipo de negocio: </div>${poi.tipo_negocio}<br>` : ''}
+                                ${poi.tiene_branding !== undefined ? `<div class="etiqueta">Branding: </div>${poi.tiene_branding ? 'Sí' : 'No'}<br>` : ''}
+                                ${poi.codigo_cajero ? `<div class="etiqueta">Código Cajero: </div>${poi.codigo_cajero}<br>` : ''}
+                                ${poi.agencia__nombre ? `<div class="etiqueta">Agencia: </div>${poi.agencia__nombre}<br>` : ''}
+                            </div>`
+                    });
+
+                    marker.addListener('mouseover', function() {
+                        infoWindow.open(map, marker);
+                    });
+
+                    marker.addListener('mouseout', function() {
+                        infoWindow.close();
+                    });
+
+                    markers.push(marker);
+                }
+            });
+        }
+    }
+
+    function clearMarkers() {
+        markers.forEach(function(marker) {
+            marker.setMap(null);
+        });
+        markers = [];
+    }
+
+    function filterMarkers(filter, button) {
+        currentFilter = filter;
+        addMarkers(currentFilter);
+        document.querySelectorAll('.btn-custom-selected').forEach(function(btn) {
+            btn.classList.remove('btn-custom-selected');
+            btn.classList.add('btn-custom');
+        });
+        if (button) {
+            button.classList.remove('btn-custom');
+            button.classList.add('btn-custom-selected');
+        }
+    }
+
+    function searchPoi() {
+        let input = document.getElementById('search-poi');
+        let query = input.value.toLowerCase();
+
+        let matchedPoi = agencias.find(agencia => agencia.nombre.toLowerCase().includes(query)) ||
+                        comercios.find(comercio => comercio.nombre_comercio.toLowerCase().includes(query)) ||
+                        cajeros.find(cajero => cajero.nombre.toLowerCase().includes(query));
+
+        if (matchedPoi) {
+            selectedPoi = matchedPoi;
+            filterMarkers('single', null);
+        }
+    }
+
+    document.getElementById('search-poi').addEventListener('input', function() {
+        let input = this.value.toLowerCase();
+        let suggestions = agencias.filter(agencia => agencia.nombre.toLowerCase().includes(input))
+            .concat(comercios.filter(comercio => comercio.nombre_comercio.toLowerCase().includes(input)))
+            .concat(cajeros.filter(cajero => cajero.nombre.toLowerCase().includes(input)));
+
+        let suggestionsList = document.getElementById('suggestions');
+        suggestionsList.innerHTML = '';
+
+        if (suggestions.length === 0 || input === '') {
+            suggestionsList.style.display = 'none';
+        } else {
+            suggestionsList.style.display = 'block';
+            suggestions.forEach(function(poi) {
+                let suggestionItem = document.createElement('a');
+                suggestionItem.href = '#';
+                suggestionItem.classList.add('list-group-item', 'list-group-item-action');
+                suggestionItem.textContent = poi.nombre || poi.nombre_comercio;
+                suggestionItem.onclick = function() {
+                    document.getElementById('search-poi').value = poi.nombre || poi.nombre_comercio;
+                    suggestionsList.innerHTML = '';
+                    suggestionsList.style.display = 'none';
+                    searchPoi();
+                };
+                suggestionsList.appendChild(suggestionItem);
+            });
+        }
+    });
+
+    window.onload = initMap;
+</script>
+
+<div id="suggestions" class="list-group"></div>
+
+<link href="{% static 'styles/pois_styles.css' %}" rel="stylesheet"/>
+
+{% endblock content %}

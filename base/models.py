@@ -70,3 +70,34 @@ class Cluster(models.Model):
         return f"Cliente: {self.cliente.codigo_cliente} - Cluster Dirección: {self.cluster_direccion}"
     
 
+class Agencia(models.Model):
+    codigo = models.CharField(max_length=255, unique=True)
+    nombre = models.CharField(max_length=255)
+    direccion = models.CharField(max_length=255)
+    latitud = models.CharField(max_length=255, null=True, blank=True)
+    longitud = models.CharField(max_length=255, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre}"
+
+class ComercioAhorita(models.Model):
+    nombre_comercio = models.CharField(max_length=255)
+    tipo_negocio = models.CharField(max_length=255)
+    direccion = models.CharField(max_length=255)
+    latitud = models.CharField(max_length=255, null=True, blank=True)
+    longitud = models.CharField(max_length=255, null=True, blank=True)
+    tiene_branding = models.BooleanField(choices=[(True, 'Sí'), (False, 'No')])
+
+    def __str__(self):
+        return f"{self.nombre_comercio} - {self.tipo_negocio}"
+
+class Cajero(models.Model):
+    codigo_cajero = models.CharField(max_length=255, unique=True)
+    nombre = models.CharField(max_length=255)
+    direccion = models.CharField(max_length=255)
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE)
+    latitud = models.CharField(max_length=255, null=True, blank=True)
+    longitud = models.CharField(max_length=255, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.codigo_cajero} - {self.nombre}"
