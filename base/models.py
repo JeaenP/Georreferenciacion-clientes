@@ -31,14 +31,13 @@ class Cliente(models.Model):
 
 
     def save(self, *args, **kwargs):
-        geolocator = GoogleV3(api_key='AIzaSyAWcxXZO36iZusfLvs4CZeOLplPir5DlvY')
-
-        direccion = f"{self.calle_principal_residencia_trabajo_cliente}, {self.calle_secundaria_residencia_trabajo_cliente},  {self.canton_residencia_trabajo_cliente}"
-        location = geolocator.geocode(direccion)
-        if location:
-            self.latitud_domicilio = location.latitude
-            self.longitud_domicilio = location.longitude
-
+        if not self.latitud_domicilio or not self.longitud_domicilio:
+            geolocator = GoogleV3(api_key='API_KEY')
+            direccion = f"{self.calle_principal_residencia_trabajo_cliente}, {self.calle_secundaria_residencia_trabajo_cliente},  {self.canton_residencia_trabajo_cliente}"
+            location = geolocator.geocode(direccion)
+            if location:
+                self.latitud_domicilio = location.latitude
+                self.longitud_domicilio = location.longitude
 
         super().save(*args, **kwargs)
 

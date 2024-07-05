@@ -10,5 +10,6 @@ urlpatterns = [
     path('visits/', views.visits, name='visits'),
     path('statistics/', views.statistics, name='statistics'),
     path('pois/', views.pois, name='pois'),
+    path('actualizar_clusters/', views.actualizar_clusters, name='actualizar_clusters'),
 ]
 

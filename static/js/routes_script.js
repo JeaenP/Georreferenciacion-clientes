@@ -4,17 +4,17 @@ let selectedLocation = null;
 let directionsService;
 let directionsRenderer;
 let clientes = djangoVariables.clientes;
-let travelMode = 'DRIVING'; // Default travel mode
-let tipoDireccion = 'trabajo'; // Default direccion type
+let travelMode = 'DRIVING'; 
+let tipoDireccion = 'trabajo';
 let currentMarkerIndex = null;
-let waypointClientIds = []; // Array to store client IDs for waypoints
+let waypointClientIds = []; 
 let infoWindow;
 const customIcon = djangoVariables.customIcon;
 
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
         zoom: 15,
-        center: { lat: -3.99820, lng: -79.20445 } // Coordenadas de inicio
+        center: { lat: -3.99820, lng: -79.20445 } 
     });
 
     directionsService = new google.maps.DirectionsService();
@@ -49,19 +49,19 @@ function initMap() {
             marker.set('cliente_id', null);
             markers.push(marker);
 
-            // Reset button style to default
+            
             ingresarUbicacionButton.classList.remove('btn-custom-selected');
             ingresarUbicacionButton.classList.add('btn-custom');
         }
     });
 
-    filterClientes(tipoDireccion); // Filtra los clientes por defecto
+    filterClientes(tipoDireccion);
 }
 
 function enableLocationSelection() {
     selectedLocation = true;
 
-    // Change button style to selected
+  
     document.getElementById('ingresar-ubicacion').classList.remove('btn-custom');
     document.getElementById('ingresar-ubicacion').classList.add('btn-custom-selected');
 }
@@ -99,7 +99,7 @@ function setDireccionType(type) {
 
 function filterClientes(type) {
     const tbody = document.getElementById('clientes-tbody');
-    tbody.innerHTML = ''; // Clear current table
+    tbody.innerHTML = ''; 
 
     clientes.forEach(cliente => {
         if ((type === 'trabajo' && cliente.latitud_trabajo && cliente.longitud_trabajo) ||
@@ -133,7 +133,7 @@ function traceRoute() {
     }
 
     let waypoints = [];
-    waypointClientIds = []; // Clear the previous waypoint client IDs
+    waypointClientIds = []; 
 
     selectedClients.forEach(clientId => {
         let cliente = clientes.find(c => c.id == clientId);
@@ -163,15 +163,15 @@ function traceRoute() {
         if (status == 'OK') {
             directionsRenderer.setDirections(result);
 
-            // Clear previous markers
+            
             markers.forEach(marker => marker.setMap(null));
             markers = [];
 
-            // Add new markers for each waypoint
+            
             let route = result.routes[0];
             let legs = route.legs;
 
-            // Add marker for the initial location
+            
             let marker = new google.maps.Marker({
                 position: selectedLocation,
                 map: map,
@@ -192,7 +192,7 @@ function traceRoute() {
             marker.set('cliente_id', null);
             markers.push(marker);
 
-            // Add markers for each waypoint and destination
+            
             for (let i = 0; i < legs.length; i++) {
                 let marker = new google.maps.Marker({
                     position: legs[i].end_location,
@@ -215,7 +215,7 @@ function traceRoute() {
                         showVisitaModal(index + 1);
                     };
                 })(i));
-                marker.set('cliente_id', waypointClientIds[i]); // Set the cliente_id for each marker
+                marker.set('cliente_id', waypointClientIds[i]); 
 
 
                 var infoWindow = new google.maps.InfoWindow({
@@ -295,12 +295,12 @@ function confirmVisita(exitosa) {
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
-                // Hide the marker instead of removing it from the array
+                
                 let marker = markers.find(marker => marker.get('cliente_id') === clienteId);
 
                 if (marker) {
                     marker.setVisible(false);
-                    // Deselect the client in the list
+                    
                     document.getElementById(`cliente${clienteId}`).checked = false;
                 } else {
                     console.error(`Marcador con cliente_id ${clienteId} no encontrado.`);
@@ -318,5 +318,5 @@ function confirmVisita(exitosa) {
 
 window.onload = function () {
     initMap();
-    filterClientes(tipoDireccion); // Filtra los clientes por defecto
+    filterClientes(tipoDireccion);
 };

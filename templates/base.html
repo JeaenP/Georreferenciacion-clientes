@@ -29,38 +29,17 @@
         </div>
         <hr class="w-100 my-0 bg-primary border-bottom">
         <div class="ms-auto d-flex align-items-center me-3 p-3">
-            <span class="fs-5">Georeferenciación de clientes</span>
+            <span class="fs-5">Georreferenciación de clientes</span>
         </div>
-        <ul class="navbar-nav flex-row d-md-none">  
-            <li class="nav-item text-nowrap">
-                <button class="nav-link px-3 text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSearch" aria-controls="navbarSearch" aria-expanded="false" aria-label="Toggle search">
-                    <svg class="bi"><use xlink:href="#search"/></svg>
-                </button>
-            </li>
-            <li class="nav-item text-nowrap">
-                <button class="nav-link px-3 text-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-                    <svg class="bi"><use xlink:href="#list"/></svg>
-                </button>
-            </li>
-        </ul>
-
-        <div id="navbarSearch" class="navbar-search w-100 collapse">
-            <input class="form-control w-100 rounded-0 border-0" type="text" placeholder="Search" aria-label="Search">
-        </div>
-
-        <ul class="navbar-nav px-3">
-            <li class="nav-item text-nowrap">
-                <a class="nav-link" href="#"></a>
-            </li>
-        </ul>
+        
     </header>
 
     <div class="container-fluid">
         <div class="row">
             <div class="sidebar border border-right col-md-3 col-lg-2 p-0 bg-body-tertiary">
-                <div class="offcanvas-md offcanvas-end bg-body-tertiary" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+                <div class="offcanvas-md offcanvas-end bg-body-tertiary" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel" ">
                     <div class="offcanvas-header">
-                        <h5 class="offcanvas-title" id="sidebarMenuLabel">Cámara de Comercio</h5>
+                        <h5 class="offcanvas-title" id="sidebarMenuLabel"></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
                     </div>
                     {% include 'partials/_sidebar.html' %}

@@ -1,37 +1,38 @@
 import json
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import JsonResponse
 from .models import Cliente, Visita, Visitador, Cluster, Agencia, Cajero, ComercioAhorita
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.db.models import Avg, Count, FloatField
+from django.db.models import Avg, Count, FloatField, Q
 from django.db.models.functions import Cast
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import Q
-import plotly.express as px
-import plotly.graph_objects as go
 from django.utils.timezone import now
 from datetime import timedelta
-from calendar import monthrange
-import calendar
 from dateutil.relativedelta import relativedelta
-import plotly.colors as pcolors
 import plotly.express as px
-
-
+import plotly.graph_objects as go
+import pandas as pd
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import StandardScaler
 
 
 def locations(request):
-    
     search_query = request.GET.get('search', None)
     clientes = Cliente.objects.all()
     clusters = Cluster.objects.all().select_related('cliente')
     productos = Cliente.objects.values_list('producto_principal', flat=True).distinct()
 
-    clientes_list = list(clientes.values('nombre_cliente', 'latitud_domicilio', 'longitud_domicilio', 'latitud_trabajo', 'longitud_trabajo', 'producto_principal', 'profesion_cliente', 'tipo_vivienda_cliente', 'tipo_direccion_cliente'))
-    clusters_list = list(clusters.values('cliente__nombre_cliente', 'cliente__latitud_domicilio', 'cliente__longitud_domicilio', 'cluster_direccion'))
-    
+    clientes_list = list(clientes.values(
+        'nombre_cliente', 'latitud_domicilio', 'longitud_domicilio', 
+        'latitud_trabajo', 'longitud_trabajo', 'producto_principal', 
+        'profesion_cliente', 'tipo_vivienda_cliente', 'tipo_direccion_cliente'
+    ))
+    clusters_list = list(clusters.values(
+        'cliente__nombre_cliente', 'cliente__latitud_domicilio', 
+        'cliente__longitud_domicilio', 'cluster_direccion'
+    ))
+
     for cluster in clusters_list:
         if cluster['cliente__latitud_domicilio']:
             cluster['cliente__latitud_domicilio'] = float(cluster['cliente__latitud_domicilio'])
@@ -59,14 +60,17 @@ def locations(request):
 
     return render(request, 'locations.html', context)
 
+
 def clients(request):
     clientes_query = Cliente.objects.all()
 
     search_query = request.GET.get('search', '')
-    profesion_filter = request.GET.get('profesion', '')
-    tipo_direccion_filter = request.GET.get('tipo_direccion', '')
-    producto_principal_filter = request.GET.get('producto_principal', '')
-    tipo_parroquia_filter = request.GET.get('tipo_parroquia', '')
+    filters = {
+        'profesion_cliente': request.GET.get('profesion', ''),
+        'tipo_direccion_cliente': request.GET.get('tipo_direccion', ''),
+        'producto_principal': request.GET.get('producto_principal', ''),
+        'tipo_parroquia_residencia_trabajo_cliente': request.GET.get('tipo_parroquia', '')
+    }
 
     if search_query:
         clientes_query = clientes_query.filter(
@@ -76,19 +80,11 @@ def clients(request):
             Q(tipo_documento__icontains=search_query)
         )
 
-    if profesion_filter:
-        clientes_query = clientes_query.filter(profesion_cliente=profesion_filter)
+    for key, value in filters.items():
+        if value:
+            clientes_query = clientes_query.filter(**{key: value})
 
-    if tipo_direccion_filter:
-        clientes_query = clientes_query.filter(tipo_direccion_cliente=tipo_direccion_filter)
-
-    if producto_principal_filter:
-        clientes_query = clientes_query.filter(producto_principal=producto_principal_filter)
-
-    if tipo_parroquia_filter:
-        clientes_query = clientes_query.filter(tipo_parroquia_residencia_trabajo_cliente=tipo_parroquia_filter)
-
-    paginator = Paginator(clientes_query, 100) 
+    paginator = Paginator(clientes_query, 50)
     page_number = request.GET.get('page')
     clientes = paginator.get_page(page_number)
 
@@ -104,17 +100,20 @@ def clients(request):
         'productos_principales': productos_principales,
         'tipos_parroquia': tipos_parroquia,
         'search_query': search_query,
-        'profesion_filter': profesion_filter,
-        'tipo_direccion_filter': tipo_direccion_filter,
-        'producto_principal_filter': producto_principal_filter,
-        'tipo_parroquia_filter': tipo_parroquia_filter,
+        **filters
     }
 
     return render(request, 'clients.html', context)
 
+
 def routes(request):
     clientesDJ = Cliente.objects.all()
-    clientes_list = list(clientesDJ.values('id', 'nombre_cliente', 'producto_principal', 'latitud_trabajo', 'longitud_trabajo', 'longitud_domicilio', 'latitud_domicilio', 'producto_principal', 'profesion_cliente', 'tipo_vivienda_cliente', 'tipo_direccion_cliente'))
+    clientes_list = list(clientesDJ.values(
+        'id', 'nombre_cliente', 'producto_principal', 'latitud_trabajo', 
+        'longitud_trabajo', 'longitud_domicilio', 'latitud_domicilio', 
+        'producto_principal', 'profesion_cliente', 'tipo_vivienda_cliente', 
+        'tipo_direccion_cliente'
+    ))
     visitadores = Visitador.objects.all()
     context = {
         'clientesDJ': clientesDJ,
@@ -122,6 +121,7 @@ def routes(request):
         'visitadores': visitadores
     }
     return render(request, 'routes.html', context)
+
 
 @csrf_exempt
 def registrar_visita(request):
@@ -133,8 +133,7 @@ def registrar_visita(request):
         cliente = Cliente.objects.get(id=cliente_id)
         visitador = Visitador.objects.get(id=visitador_id)
         
-        visita = Visita(cliente=cliente, visitador=visitador, exitosa=exitosa)
-        visita.save()
+        Visita.objects.create(cliente=cliente, visitador=visitador, exitosa=exitosa)
 
         return JsonResponse({'status': 'success', 'message': 'Visita registrada correctamente.'})
 
@@ -153,14 +152,6 @@ def visits(request):
 
     return render(request, 'visits.html', context)
 
-
-from django.shortcuts import render
-import plotly.express as px
-import plotly.graph_objects as go
-from .models import Cliente, Visita, Visitador, Cluster
-from django.db.models import Count, Q
-from django.utils.timezone import now
-from datetime import timedelta
 
 def statistics(request):
     mapbox_access_token = 'pk.eyJ1IjoiamVhZW4iLCJhIjoiY2x4d2d0aWE1MjM3ZzJrcTNtZ3F4cWswYyJ9.Z114ZAl2fwrL5oxgsrEGog'
@@ -204,7 +195,7 @@ def statistics(request):
         )
         fig.update_layout(
             mapbox_accesstoken=mapbox_access_token,
-            height= 700  # Ajusta la altura aquí
+            height=700
         )
         
     elif chart_type == 'visitas_efectivas':
@@ -231,7 +222,7 @@ def statistics(request):
             mode='lines', name='No Efectivas',
             line=dict(color='#ef2947')
         ))
-        fig.update_layout(title='Evolución de Visitas Efectivas y No Efectivas', xaxis_title='Fecha', yaxis_title='Número de Visitas', height= 700)
+        fig.update_layout(title='Evolución de Visitas Efectivas y No Efectivas', xaxis_title='Fecha', yaxis_title='Número de Visitas', height=700)
     
     elif chart_type == 'visitas_colaborador':
         today = now()
@@ -256,22 +247,22 @@ def statistics(request):
                 line=dict(color=color)
             ))
 
-        fig.update_layout(title='Visitas por Colaborador', xaxis_title='Fecha', yaxis_title='Número de Visitas', height= 700)
+        fig.update_layout(title='Visitas por Colaborador', xaxis_title='Fecha', yaxis_title='Número de Visitas', height=700)
     elif chart_type == 'pie_producto':
         productos = Cliente.objects.values('producto_principal').annotate(count=Count('id'))
-        fig = px.pie(productos, values='count', names='producto_principal', title='Distribución por Producto', height= 700)
+        fig = px.pie(productos, values='count', names='producto_principal', title='Distribución por Producto', height=700)
     elif chart_type == 'pie_sector':
         sectores = Cliente.objects.values('parroquia_residencia_trabajo_cliente').annotate(count=Count('id'))
-        fig = px.pie(sectores, values='count', names='parroquia_residencia_trabajo_cliente', title='Distribución por Sector', height= 700)
+        fig = px.pie(sectores, values='count', names='parroquia_residencia_trabajo_cliente', title='Distribución por Sector', height=700)
     elif chart_type == 'scatter_visitas_productos':
         productos_visitas = Visita.objects.values('cliente__producto_principal').annotate(count=Count('id'))
         productos = [p['cliente__producto_principal'] for p in productos_visitas]
         counts = [p['count'] for p in productos_visitas]
-        fig = px.scatter(x=productos, y=counts, text=counts, title='Relación Visitas y Productos', height= 700)
+        fig = px.scatter(x=productos, y=counts, text=counts, title='Relación Visitas y Productos', height=700)
         fig.update_traces(mode='markers+text', textposition='top center')
     elif chart_type == 'bar_productos_clientes':
         productos_clientes = Cliente.objects.values('producto_principal').annotate(count=Count('id'))
-        fig = px.bar(productos_clientes, x='producto_principal', y='count', title='Productos por Clientes', height= 700)
+        fig = px.bar(productos_clientes, x='producto_principal', y='count', title='Productos por Clientes', height=700)
     elif chart_type == 'bar_visitas_efectivas_productos':
         visitas = Visita.objects.all()
         productos_efectivas = visitas.filter(exitosa=True).values('cliente__producto_principal').annotate(count=Count('id'))
@@ -285,7 +276,7 @@ def statistics(request):
             go.Bar(name='Efectivas', x=productos, y=efectivas_counts, marker_color='#5ccb5f', text=efectivas_counts, textposition='outside'),
             go.Bar(name='No Efectivas', x=productos, y=no_efectivas_counts, marker_color='#ef2947', text=no_efectivas_counts, textposition='outside')
         ])
-        fig.update_layout(barmode='group', title='Visitas Efectivas y No Efectivas por Producto', xaxis_title='Producto', yaxis_title='Número de Visitas', height= 700)
+        fig.update_layout(barmode='group', title='Visitas Efectivas y No Efectivas por Producto', xaxis_title='Producto', yaxis_title='Número de Visitas', height=700)
     else:
         fig = None
 
@@ -298,6 +289,7 @@ def statistics(request):
     }
 
     return render(request, 'statistics.html', context)
+
 
 def pois(request):
     search_query = request.GET.get('search', None)
@@ -319,3 +311,43 @@ def pois(request):
     }
 
     return render(request, 'pois.html', context)
+
+
+@csrf_exempt
+def actualizar_clusters(request):
+    if request.method == 'POST':
+        clientes = Cliente.objects.exclude(latitud_domicilio__isnull=True, longitud_domicilio__isnull=True).values('id', 'latitud_domicilio', 'longitud_domicilio')
+
+        valid_clientes = []
+        for cliente in clientes:
+            try:
+                lat = float(cliente['latitud_domicilio'])
+                lng = float(cliente['longitud_domicilio'])
+                valid_clientes.append({'id': cliente['id'], 'latitud_float': lat, 'longitud_float': lng})
+            except ValueError:
+                continue
+
+        df = pd.DataFrame(valid_clientes)
+
+        if df.empty:
+            return JsonResponse({'status': 'fail', 'message': 'No valid clients found'})
+
+        X = df[['latitud_float', 'longitud_float']].values
+
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        n_clusters = 20
+        hierarchical_clustering = AgglomerativeClustering(n_clusters=n_clusters)
+        cluster_labels = hierarchical_clustering.fit_predict(X_scaled)
+
+        df['cluster_domicilio'] = cluster_labels
+
+        for index, row in df.iterrows():
+            Cluster.objects.update_or_create(
+                cliente_id=row['id'],
+                defaults={'cluster_direccion': row['cluster_domicilio']}
+            )
+
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'fail'})
