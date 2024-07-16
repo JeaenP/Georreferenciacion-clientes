@@ -106,15 +106,14 @@ WSGI_APPLICATION = 'Georeferenciacion.wsgi.application'
 
 # Database
 
+DATABASE_URL = f"postgresql://postgres:{env('DB_PASSWORD')}@localhost:5432/clientesbl"
+
+# Configuración de la base de datos utilizando dj_database_url
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'clientesbl',
-        'USER': 'postgres',
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600
+    )
 }
 
 
