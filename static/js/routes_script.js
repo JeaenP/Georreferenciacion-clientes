@@ -14,7 +14,7 @@ const customIcon = djangoVariables.customIcon;
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
         zoom: 15,
-        center: { lat: -3.99820, lng: -79.20445 } 
+        center: { lat: -3.99820, lng: -79.20445 }
     });
 
     directionsService = new google.maps.DirectionsService();
@@ -49,7 +49,6 @@ function initMap() {
             marker.set('cliente_id', null);
             markers.push(marker);
 
-            
             ingresarUbicacionButton.classList.remove('btn-custom-selected');
             ingresarUbicacionButton.classList.add('btn-custom');
         }
@@ -60,8 +59,6 @@ function initMap() {
 
 function enableLocationSelection() {
     selectedLocation = true;
-
-  
     document.getElementById('ingresar-ubicacion').classList.remove('btn-custom');
     document.getElementById('ingresar-ubicacion').classList.add('btn-custom-selected');
 }
@@ -163,15 +160,12 @@ function traceRoute() {
         if (status == 'OK') {
             directionsRenderer.setDirections(result);
 
-            
             markers.forEach(marker => marker.setMap(null));
             markers = [];
 
-            
             let route = result.routes[0];
             let legs = route.legs;
 
-            
             let marker = new google.maps.Marker({
                 position: selectedLocation,
                 map: map,
@@ -192,7 +186,6 @@ function traceRoute() {
             marker.set('cliente_id', null);
             markers.push(marker);
 
-            
             for (let i = 0; i < legs.length; i++) {
                 let marker = new google.maps.Marker({
                     position: legs[i].end_location,
@@ -207,7 +200,6 @@ function traceRoute() {
                         url: customIcon,
                         scaledSize: new google.maps.Size(36, 36),
                     }
-
                 });
 
                 marker.addListener('click', (function (index) {
@@ -215,11 +207,9 @@ function traceRoute() {
                         showVisitaModal(index + 1);
                     };
                 })(i));
-                marker.set('cliente_id', waypointClientIds[i]); 
-
+                marker.set('cliente_id', waypointClientIds[i]);
 
                 var infoWindow = new google.maps.InfoWindow({
-
                     content: `
                             `
                 });
@@ -314,7 +304,6 @@ function confirmVisita(exitosa) {
             alert('Ocurrió un error al registrar la visita.');
         });
 }
-
 
 window.onload = function () {
     initMap();

@@ -1,6 +1,7 @@
 from django.db import models
 from geopy.geocoders import GoogleV3
 from django.utils import timezone
+from django.conf import settings
 
 class Cliente(models.Model):
     codigo_cliente = models.CharField(max_length=255)
@@ -32,7 +33,7 @@ class Cliente(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.latitud_domicilio or not self.longitud_domicilio:
-            geolocator = GoogleV3(api_key='API_KEY')
+            geolocator = GoogleV3(api_key=settings.GOOGLE_API_KEY)
             direccion = f"{self.calle_principal_residencia_trabajo_cliente}, {self.calle_secundaria_residencia_trabajo_cliente},  {self.canton_residencia_trabajo_cliente}"
             location = geolocator.geocode(direccion)
             if location:

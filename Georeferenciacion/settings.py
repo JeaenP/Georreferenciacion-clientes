@@ -15,6 +15,9 @@ import os
 import pytz
 import dj_database_url
 import environ
+from decouple import config
+
+GOOGLE_API_KEY = config('GOOGLE_API_KEY')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,6 +32,7 @@ env = environ.Env(
 
 # Lee el archivo .env si está presente
 environ.Env.read_env(os.path.join(BASE_DIR, 'env/.env'))
+environ.Env.read_env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,6 +55,9 @@ RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 # Application definition
+
+
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -98,13 +105,16 @@ WSGI_APPLICATION = 'Georeferenciacion.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgresql://postgres:jp2583462@localhost:5432/clientesbl',
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'clientesbl',
+        'USER': 'postgres',
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
 }
 
 
@@ -161,3 +171,9 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# secure
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_AGE = 3600
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

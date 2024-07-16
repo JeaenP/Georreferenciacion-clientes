@@ -2,7 +2,6 @@ import json
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Cliente, Visita, Visitador, Cluster, Agencia, Cajero, ComercioAhorita
-from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg, Count, FloatField, Q
 from django.db.models.functions import Cast
 from django.conf import settings
@@ -123,7 +122,7 @@ def routes(request):
     return render(request, 'routes.html', context)
 
 
-@csrf_exempt
+
 def registrar_visita(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente_id')
@@ -313,7 +312,6 @@ def pois(request):
     return render(request, 'pois.html', context)
 
 
-@csrf_exempt
 def actualizar_clusters(request):
     if request.method == 'POST':
         clientes = Cliente.objects.exclude(latitud_domicilio__isnull=True, longitud_domicilio__isnull=True).values('id', 'latitud_domicilio', 'longitud_domicilio')
